@@ -24,3 +24,12 @@ def get_autosome_names_grch38():
             'chr20',
             'chr21',
             'chr22']
+
+
+def get_test_path():
+    """
+    :return: a tuple with vcf path and reference fasta path for testing
+    """
+    vcf_path = "/Users/simonelongo/too_big_for_icloud/gnomAD_v3/gnomad.genomes.r3.0.sites.vcf.bgz"
+    fasta_path = "/Users/simonelongo/too_big_for_icloud/ref_genome/hg38/hg38.fa"
+    return vcf_path, fasta_path
