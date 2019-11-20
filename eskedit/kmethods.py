@@ -249,6 +249,25 @@ def process_region(region, vcf_path, ref_fasta, kmer_size, singletons=True, nsin
 
 
 def get_kmer_context(vcf_path, ref_fasta, kmer_length, nprocs=0, singletons=True, nsingletons=False):
+    """
+    Process VCF in parallel to obtain specified variants and their k-mer contexts
+    :param vcf_path: Path to VCF file
+    :param ref_fasta: Path to reference Fasta ('.fa')
+    :param kmer_length: Integer for k-mer size (eg. 3 will give nucleotides 1 position to the left and right)
+    :param nprocs: Number of CPUs to use
+    :param singletons: True/False process singletons?
+    :param nsingletons: True/False proces nonsingletons? (NOTE: These 2 can be used together)
+    :return: A list containing dictionaries from each process. Maps title of information to the data structure. Post-processing will be a future feature.
+    """
+    if singletons and not nsingletons:
+        print('Processing %s singletons' % vcf_path)
+    elif nsingletons and not singletons:
+        print('Processing %s nonsingletons' % vcf_path)
+    elif singletons and nsingletons:
+        print('Processing %s singletons and nonsingletons' % vcf_path)
+    else:
+        print('Not processing anything. Please have at least one keyword \'singletons\' or \'nsingletons\' set to \'True\'')
+
     if nprocs == 0:
         nprocs = mp.cpu_count()
     # intentionally create more chunks to even CPU distribution
