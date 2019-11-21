@@ -10,6 +10,7 @@ from eskedit.kclass import VCFRegion
 
 def get_split_vcf_regions(vcf_path, nprocs):
     vcf = VCF(vcf_path)
+    nprocs = int(nprocs)
     num_entries = np.sum(vcf.seqlens)
     chunk_size = int(num_entries / nprocs) + 1
     names = get_autosome_names_grch38()
