@@ -1,6 +1,9 @@
 import eskedit as ek
-vcf_path = '/Users/simonelongo/too_big_for_icloud/gnomAD_v3/gnomad.genomes.r3.0.sites.vcf.bgz'
-fasta_path = '/Users/simonelongo/too_big_for_icloud/ref_genome/hg38/hg38.fa'
+#vcf_path = '/Users/simonelongo/too_big_for_icloud/gnomAD_v3/gnomad.genomes.r3.0.sites.vcf.bgz'
+#fasta_path = '/Users/simonelongo/too_big_for_icloud/ref_genome/hg38/hg38.fa'
+
+vcf_path = '/scratch/general/lustre/u0319040/gnomadv3/gnomad.genomes.r3.0.sites.vcf.bgz'
+fasta_path = '/scratch/general/lustre/u0319040/ref_genome/hg38/hg38.fa'
 
 results = ek.get_kmer_context(vcf_path, fasta_path, 3, nprocs=6)
 # results should be  list of dictionaries
@@ -17,3 +20,8 @@ for coll in results:
 # s_positions = defaultdict(Variant)
 ek.merge_positions_dd(positions, outfile='singletons_test.bed')
 ek.merge_transitions_ddc(transitions)
+
+# /scratch/general/lustre/u0319040/gnomadv3/gnomad.genomes.r3.0.sites.vcf.bgz
+# /scratch/general/lustre/u0319040/ref_genome/hg38/hg38.fa
+
+# /uufs/chpc.utah.edu/common/home/u0319040/kmertools/test.py
