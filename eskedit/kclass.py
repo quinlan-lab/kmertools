@@ -30,8 +30,9 @@ class Variant:
             self.AC) + '\n'
 
     def __repr__(self):
-        return "CHROM: " + str(self.CHROM) + "\t" + "POS: " + str(self.POS) + "\tREF: " + str(
-            self.REF) + "\tALT: " + str(self.ALT) + "\t" + str(self.AC) + '\n'
+        # return "CHROM: " + str(self.CHROM) + "\t" + "POS: " + str(self.POS) + "\tREF: " + str(
+        #     self.REF) + "\tALT: " + str(self.ALT) + "\t" + str(self.AC) + '\n'
+        return str(self)
 
     def __eq__(self, other):
         if not isinstance(other, Variant):
@@ -75,25 +76,71 @@ class Variant:
         return output + '\n'
 
 
+class Kmer:
+    def __init__(self, sequence):
+        from eskedit import get_complementary_sequence
+        self.sequence = sequence.upper()
+        self.complement = get_complementary_sequence(self.sequence)
+        if self.complement < self.sequence:
+            temp = self.sequence
+            self.sequence = self.complement
+            self.complement = temp
+
+    def __eq__(self, other):
+        return other.sequence == self.sequence or other.sequence == self.complement
+
+    def __ne__(self, other):
+        return other.sequence != self.sequence and other.sequence != self.complement
+
+    def __str__(self):
+        return self.sequence
+
+    def __repr__(self):
+        return self.sequence
+
+    def __hash__(self):
+        return hash(self.sequence)
+
+    def __lt__(self, other):
+        return other.sequence < self.sequence
+
+    def __gt__(self, other):
+        return other.sequence > self.sequence
+
+    def __getitem__(self, item):
+        if not isinstance(item, (int, float)):
+            return ""
+        return self.sequence[item]
+
+
 class VCFRegion:
     def __init__(self, chrom, start, stop):
-        self.region = [chrom, start, stop]
+        # self.region = [chrom, start, stop]
+        self.chrom = chrom
+        self.start = start
+        self.stop = stop
 
     # def add(self, chrom, start, stop):
     #     if chrom in self.regions.keys():
     #         self.regions[chrom][1] = stop
 
     def size(self):
-        return self.region[2] - self.region[1]
+        return self.start - self.stop
 
     def __str__(self):
-        return str(self.region[0]) + ':' + str(self.region[1]) + '-' + str(self.region[2])
+        return str(self.chrom) + ':' + str(self.start) + '-' + str(self.stop)
 
     def __repr__(self):
         return str(self)
 
     def __hash__(self):
-        return hash(str(self))
+        return hash(str(self.chrom) + str(self.start) + str(self.stop))
 
     def __eq__(self, other):
         return str(other) == str(self)
+
+    # def __getstate__(self):
+    #     return self.__hash__
+    #
+    # def __setstate__(self, state):
+    #     self.__dict__ = state

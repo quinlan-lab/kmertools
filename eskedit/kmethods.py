@@ -50,6 +50,16 @@ def gen_random_sequence(length):
     return random_seq
 
 
+def ref_genome_as_string(ref_fasta, keys=None):
+    ref_genome = Fasta(ref_fasta)
+    if keys is None:
+        keys = ref_genome.keys()
+    ref_seq = ""
+    for chrom in keys:
+        ref_seq += str(ref_genome[chrom])
+    return ref_seq
+
+
 def complement(c):
     """
     :param c: Nucleotide to get complement of
@@ -129,7 +139,7 @@ def kmer_search(sequence, kmer_length):
     for i in range(len(sequence) - (kmer_length - 1)):  # This takes the (1-based) reference sequence for chromosome 22
         next_seq = sequence[i:(i + kmer_length)]
         if not ('N' in next_seq or 'n' in next_seq):
-            counts[next_seq] += 1
+            counts[next_seq.upper()] += 1
     return counts
 
 
@@ -154,7 +164,7 @@ def get_kmer_count(sequence, kmer_length, nprocs=None):
         nprocs = mp.cpu_count()
     args = split_seq(sequence, nprocs, overlap=kmer_length)
     args = [[seq, kmer_length] for seq in args]
-    pool = mp.Pool(mp.cpu_count())
+    pool = mp.Pool(nprocs)
     results = [res.get() for res in [pool.starmap_async(kmer_search, args)]]
     pool.close()
     counts = Counter()
@@ -165,7 +175,7 @@ def get_kmer_count(sequence, kmer_length, nprocs=None):
     return counts
 
 
-def process_region(region, vcf_path, ref_fasta, kmer_size, singletons=True, nsingletons=False):
+def process_region(region, vcf_path, ref_fasta, kmer_size, singletons, nsingletons):
     """
     Process a VCFRegion to look for variants and sequence context
     :param region: VCFRegion as defined in kclass.py
@@ -183,6 +193,7 @@ def process_region(region, vcf_path, ref_fasta, kmer_size, singletons=True, nsin
     ref = Fasta(ref_fasta)
 
     if singletons and not nsingletons:
+        print('Processing only singleton variants')
         s_transitions = defaultdict(Counter)
         s_positions = defaultdict(Variant)
         for section in region:
@@ -195,11 +206,12 @@ def process_region(region, vcf_path, ref_fasta, kmer_size, singletons=True, nsin
                     # take 7mer around variant. pyfaidx excludes start index and includes end index
                     adj_seq = ref[str(new_var.CHROM)][(new_var.POS - start_idx_offset):(new_var.POS + kmer_mid_idx)].seq
                     if complete_sequence(adj_seq):
-                        s_transitions[adj_seq][new_var.ALT[0]] += 1
+                        s_transitions[adj_seq.upper()][new_var.ALT[0]] += 1
             print('Time to complete section ' + str(section) + ': ' + str(time.time() - start))
         return {'singleton_transitions': s_transitions, 'singleton_positions': s_positions}
 
     elif nsingletons and not singletons:
+        print('Procesing only non-singleton variants')
         ns_transitions = defaultdict(Counter)
         ns_positions = defaultdict(Variant)
         for section in region:
@@ -217,6 +229,7 @@ def process_region(region, vcf_path, ref_fasta, kmer_size, singletons=True, nsin
         return {'nonsingleton_transitions': ns_transitions, 'nonsingleton_positions': ns_positions}
 
     elif singletons and nsingletons:
+        print('Processing singleton and non-singleton variants')
         s_transitions = defaultdict(Counter)
         s_positions = defaultdict(Variant)
         ns_transitions = defaultdict(Counter)
@@ -226,7 +239,7 @@ def process_region(region, vcf_path, ref_fasta, kmer_size, singletons=True, nsin
             print('Processing ' + str(section))
             for variant in vcf(str(section)):
                 if is_quality_singleton(variant):
-                    new_var = Variant(variant=variant,  fields=['vep'])
+                    new_var = Variant(variant=variant, fields=['vep'])
                     s_positions[new_var.INDEX] = new_var
                     # take 7mer around variant. pyfaidx excludes start index and includes end index
                     adj_seq = ref[str(new_var.CHROM)][(new_var.POS - start_idx_offset):(new_var.POS + kmer_mid_idx)].seq
@@ -266,17 +279,23 @@ def get_kmer_context(vcf_path, ref_fasta, kmer_length, nprocs=0, singletons=True
     elif singletons and nsingletons:
         print('Processing %s singletons and nonsingletons' % vcf_path)
     else:
-        print('Not processing anything. Please have at least one keyword \'singletons\' or \'nsingletons\' set to \'True\'')
+        print(
+            'Not processing anything. Please have at least one keyword \'singletons\' or \'nsingletons\' set to \'True\'')
 
     if nprocs == 0:
         nprocs = mp.cpu_count()
     # intentionally create more chunks to even CPU distribution
     regions = get_split_vcf_regions(vcf_path, nprocs * 20)  # TODO: This number (20) can and should change to optimize
-    arguments = [(region, vcf_path, ref_fasta, kmer_length, dict(singletons=singletons, nsingletons=nsingletons)) for
-                 region in regions]
+    arguments = [(region,
+                  vcf_path,
+                  ref_fasta,
+                  kmer_length,
+                  singletons,
+                  nsingletons) for region in regions]
     pool = mp.Pool(nprocs)
     results = [result.get() for result in [pool.starmap_async(process_region, arguments)]]
     pool.close()
+    pool.join()
     return results[0]
 
 
@@ -313,3 +332,15 @@ def merge_positions_dd(positions_iter, outfile='positions.bed'):
             output.write(v.print_variant(fields=['vep']))
     output.close()
     return
+
+
+def file_len(fname):
+    """
+    Taken from https://stackoverflow.com/questions/845058/how-to-get-line-count-of-a-large-file-cheaply-in-python
+    :param fname: path to file
+    :return: number of lines in the file
+    """
+    with open(fname) as f:
+        for i, l in enumerate(f):
+            pass
+    return i + 1

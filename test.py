@@ -2,10 +2,11 @@ import eskedit as ek
 import sys
 
 # vcf_path = '/Users/simonelongo/too_big_for_icloud/gnomAD_v3/gnomad.genomes.r3.0.sites.vcf.bgz'
-# fasta_path = '/Users/simonelongo/too_big_for_icloud/ref_genome/hg38/hg38.fa'
+fasta_path = '/Users/simonelongo/too_big_for_icloud/ref_genome/hg38/hg38.fa'
+vcf_path = '/Users/simonelongo/Documents/QuinlanLabFiles/kmer_data/data/samp_build38.vcf.bgz'
 
-vcf_path = '/scratch/general/lustre/u0319040/gnomadv3/gnomad.genomes.r3.0.sites.vcf.bgz'
-fasta_path = '/scratch/general/lustre/u0319040/ref_genome/hg38/hg38.fa'
+# vcf_path = '/scratch/general/lustre/u0319040/gnomadv3/gnomad.genomes.r3.0.sites.vcf.bgz'
+# fasta_path = '/scratch/general/lustre/u0319040/ref_genome/hg38/hg38.fa'
 
 try:
     ksize = int(sys.argv[1])

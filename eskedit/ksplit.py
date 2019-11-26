@@ -1,7 +1,6 @@
 import os
 import random
 from collections import defaultdict
-
 from cyvcf2 import VCF, Writer
 import numpy as np
 from eskedit.constants import get_autosome_names_grch38
