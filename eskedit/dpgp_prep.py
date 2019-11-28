@@ -1,7 +1,9 @@
 from collections import Counter
 import pandas as pd
 import multiprocessing as mp
+from pyfaidx import Fasta
 from eskedit import split_seq
+import eskedit as ek
 
 
 def get_clean_seq(seq):
@@ -86,7 +88,7 @@ def dpgp_kmer_search(sequence, kmer_length):
     return counts, total_n, cg_count
 
 
-def chrom_stats(seq, kmer_size, nbins):
+def chrom_stats(seq, kmer_size, nbins, chrom=None):
     df = pd.DataFrame()
     genome_position = 0
     clean_seq, total_n = get_clean_seq(seq)
@@ -102,4 +104,43 @@ def chrom_stats(seq, kmer_size, nbins):
             df = chrom_df
         else:
             df = pd.concat([df, chrom_df], axis=1, sort=False)
+    return df
+
+
+def named_chrom_stats(chromname, seq, kmer_size, nbins):
+    df = pd.DataFrame()
+    genome_position = 0
+    clean_seq, total_n = get_clean_seq(seq)
+    chrom_split = split_seq(clean_seq, nbins)
+    for idx, section in enumerate(chrom_split):
+        counts, chrom_n, cg_count = dpgp_kmer_search(section, kmer_size)
+        chrom_df = pd.DataFrame.from_dict(counts, orient='index', columns=[str(chromname) + '_' + str(genome_position)])
+        genome_position += len(section)
+        chrom_df.loc['CG_count'] = cg_count
+        chrom_df.loc['section_N_count'] = chrom_n
+        chrom_df.loc['total_N_count'] = total_n
+        if idx == 0:
+            df = chrom_df
+        else:
+            df = pd.concat([df, chrom_df], axis=1, sort=False)
+    return df
+
+
+def kmers_per_chromosome_clustering(ref_fasta, kmer_size, chrom_bins, nprocs=None):
+    if nprocs is None:
+        nprocs = mp.cpu_count()
+    fa = Fasta(ref_fasta)
+    chrom_seqs = []
+    for chrom in ek.get_autosome_names_grch38():
+        chrom_seqs.append((chrom, str(fa[chrom])))
+    args = [(*seq, kmer_size, chrom_bins) for seq in chrom_seqs]
+    pool = mp.Pool(nprocs)
+    results = [result.get() for result in [pool.starmap_async(named_chrom_stats, args)]]
+    pool.close()
+    df = pd.DataFrame()
+    for idx, res in enumerate(results[0]):
+        if idx == 0:
+            df = res
+        else:
+            df = pd.concat([df, res], axis=1, sort=False)
     return df
