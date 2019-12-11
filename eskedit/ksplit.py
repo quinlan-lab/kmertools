@@ -7,6 +7,30 @@ from eskedit.constants import get_autosome_names_grch38
 from eskedit.kclass import VCFRegion
 
 
+def get_split_chrom_vcf(vcf_path, chrom, nprocs):
+    vcf = VCF(vcf_path)
+    nprocs = int(nprocs)
+    names = get_autosome_names_grch38()
+    if chrom not in names:
+        print('Chromosome key, %s, not found in VCF, please check for typos.' % str(chrom))
+    chrom_len = 0
+    for kv in zip(vcf.seqnames, vcf.seqlens):
+        if kv[0] == chrom:
+            chrom_len = kv[1]
+    chunk_size = chrom_len // nprocs
+    regions = []
+    start = 1
+    stop = chunk_size
+    for i in range(nprocs):
+        if i < nprocs - 1:
+            regions.append(VCFRegion(chrom, start, stop))
+            start = stop
+            stop += chunk_size
+        else:
+            regions.append(VCFRegion(chrom, start, chrom_len))
+    return regions
+
+
 def get_split_vcf_regions(vcf_path, nprocs):
     vcf = VCF(vcf_path)
     nprocs = int(nprocs)

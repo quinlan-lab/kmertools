@@ -7,7 +7,7 @@ from cyvcf2 import VCF
 import re
 import pandas as pd
 from pyfaidx import Fasta
-from eskedit.kclass import Variant
+from eskedit.kclass import Variant, Kmer
 from eskedit.ksplit import split_seq, get_split_vcf_regions
 
 
@@ -332,6 +332,40 @@ def merge_positions_dd(positions_iter, outfile='positions.bed'):
             output.write(v.print_variant(fields=['vep']))
     output.close()
     return
+
+
+def combine_df_kmer_indices(df):
+    combined = Counter()
+    df.fillna(0, inplace=True)
+    for i, r in df.iterrows():
+        try:
+            k = Kmer(i)
+        except (ValueError, KeyError):
+            print("Row %s was skipped" % str(r.name))
+            continue
+        combined[k] += r
+    return pd.DataFrame.from_dict(combined, orient='index').sort_index()
+
+
+def clean_counts_df(counts_fpath, get_freq=True, combine_complements=False, save_file=None):
+    df = pd.read_csv(counts_fpath, index_col=0)
+    df.fillna(0, inplace=True)
+    cdict = defaultdict(Counter)
+    for i, r in df.iterrows():
+        if combine_complements:
+            k = Kmer(i.upper())
+        else:
+            k = i.upper()
+        for n in list('ACGT'):
+            cdict[k][n] += r[n]
+    df = pd.DataFrame.from_dict(cdict, orient='index')
+    df.sort_index(inplace=True)
+    if get_freq:
+        df['total'] = df.sum(axis=1)
+        df = df / df.sum().sum()
+    if save_file is not None:
+        df.to_csv(save_file)
+    return df
 
 
 def file_len(fname):

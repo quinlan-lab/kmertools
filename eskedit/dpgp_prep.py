@@ -107,18 +107,21 @@ def chrom_stats(seq, kmer_size, nbins, chrom=None):
     return df
 
 
-def named_chrom_stats(chromname, seq, kmer_size, nbins):
+def named_chrom_stats(chromname, seq, kmer_size, nbins, clean_seq=False):
     df = pd.DataFrame()
     genome_position = 0
-    clean_seq, total_n = get_clean_seq(seq)
-    chrom_split = split_seq(clean_seq, nbins)
+    if clean_seq:
+        seq, total_n = get_clean_seq(seq)
+    chrom_split = split_seq(seq, nbins)
+    print("%s preprocessing done." % chromname, flush=True)
     for idx, section in enumerate(chrom_split):
         counts, chrom_n, cg_count = dpgp_kmer_search(section, kmer_size)
         chrom_df = pd.DataFrame.from_dict(counts, orient='index', columns=[str(chromname) + '_' + str(genome_position)])
         genome_position += len(section)
         chrom_df.loc['CG_count'] = cg_count
         chrom_df.loc['section_N_count'] = chrom_n
-        chrom_df.loc['total_N_count'] = total_n
+        if clean_seq:
+            chrom_df.loc['total_N_count'] = total_n
         if idx == 0:
             df = chrom_df
         else:
@@ -126,13 +129,16 @@ def named_chrom_stats(chromname, seq, kmer_size, nbins):
     return df
 
 
-def kmers_per_chromosome_clustering(ref_fasta, kmer_size, chrom_bins, nprocs=None):
+def kmers_per_chromosome_clustering(ref_fasta, kmer_size, chrom_bins, nprocs=None, chroms=None):
     if nprocs is None:
         nprocs = mp.cpu_count()
     fa = Fasta(ref_fasta)
     chrom_seqs = []
-    for chrom in ek.get_autosome_names_grch38():
-        chrom_seqs.append((chrom, str(fa[chrom])))
+    if chroms is None:
+        for chrom in ek.get_autosome_names_grch38():
+            chrom_seqs.append((chrom, str(fa[chrom])))
+    else:
+        chrom_seqs.extend([(chrom, str(fa[chrom])) for chrom in chroms])
     args = [(*seq, kmer_size, chrom_bins) for seq in chrom_seqs]
     pool = mp.Pool(nprocs)
     results = [result.get() for result in [pool.starmap_async(named_chrom_stats, args)]]
@@ -144,3 +150,5 @@ def kmers_per_chromosome_clustering(ref_fasta, kmer_size, chrom_bins, nprocs=Non
         else:
             df = pd.concat([df, res], axis=1, sort=False)
     return df
+
+# TODO: implement seq split without removing N's in order to align with Fasta and VCF for plotting

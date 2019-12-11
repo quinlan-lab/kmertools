@@ -102,10 +102,10 @@ class Kmer:
         return hash(self.sequence)
 
     def __lt__(self, other):
-        return other.sequence < self.sequence
+        return other.sequence > self.sequence
 
     def __gt__(self, other):
-        return other.sequence > self.sequence
+        return other.sequence < self.sequence
 
     def __getitem__(self, item):
         if not isinstance(item, (int, float)):
