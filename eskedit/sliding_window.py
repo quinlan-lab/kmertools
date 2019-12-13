@@ -38,7 +38,7 @@ def sliding_window_from_csv(var_csv, window_size, nprocs=None):
 
 
 def getcountsdict(kmer_size):
-    path = '../input_data/counts_data/{}mer_relative_mutation_freq_v3.csv'.format(kmer_size)
+    path = './input_data/counts_data/{}mer_relative_mutation_freq_v3.csv'.format(kmer_size)
     df = pd.read_csv(path, index_col=0)
     # df['probability'] = df.iloc[:, :4].apply
     return dict(zip(df.index, df.frequency))

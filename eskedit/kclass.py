@@ -11,6 +11,10 @@ class Variant:
         else:
             variant = kwargs.get('variant')
             try:
+                self.qual = kwargs.get('qual')
+            except KeyError:
+                self.qual = False
+            try:
                 fields = kwargs.get('fields')
             except KeyError:
                 fields = ['vep']
@@ -18,6 +22,8 @@ class Variant:
             self.ALT = variant.ALT
             self.POS = variant.POS
             self.CHROM = variant.CHROM
+            if self.qual:
+                self.QUAL = variant.QUAL
             self.info = defaultdict(str)
             for f in fields:
                 self.info[f] = str(variant.INFO.get(f))
@@ -26,6 +32,9 @@ class Variant:
 
     def __str__(self):
         # return "POS: " + str(self.POS) + "\tREF: " + str(self.REF) + "\tALT: " + str(self.ALT) + '\n'
+        if self.qual:
+            return str(self.CHROM) + "\t" + str(self.POS) + "\t" + str(self.REF) + "\t" + str(self.ALT) + "\t" + str(
+                self.AC) + '\t' + str(self.QUAL) + '\n'
         return str(self.CHROM) + "\t" + str(self.POS) + "\t" + str(self.REF) + "\t" + str(self.ALT) + "\t" + str(
             self.AC) + '\n'
 
