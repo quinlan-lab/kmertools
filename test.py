@@ -7,7 +7,7 @@ if __name__ == "__main__":
     bedpath = sys.argv[2]
     vcfpath = sys.argv[3]
     fastapath = sys.argv[4]
-    results = ek.train_model(bedpath, vcfpath, fastapath, invert_selection=True, clean_bed=True)
+    results = ek.train_model(bedpath, vcfpath, fastapath, kmer_size, invert_selection=True, clean_bed=True)
     outfile1 = 'regional_transitions_' + str(kmer_size) + 'mer.csv'
     outfile2 = 'regional_' + str(kmer_size) + 'mer_count.csv'
     pd.DataFrame.from_dict(results['transitions'], orient='index').to_csv(outfile1)

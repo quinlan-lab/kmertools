@@ -1,5 +1,5 @@
 import pandas as pd
-import pathos.multiprocessing as mp
+import multiprocessing as mp
 import eskedit as ek
 from pyfaidx import Fasta
 from cyvcf2 import VCF

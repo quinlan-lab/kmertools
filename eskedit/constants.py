@@ -1,3 +1,6 @@
+from pkg_resources import resource_filename
+
+
 def get_autosome_names_grch38():
     """
     :return: a list of the primary autosome names for build 38 (eg. chr1)
@@ -29,7 +32,8 @@ def get_autosome_names_grch38():
 def get_grch38_chroms():
     names = []
     lengths = []
-    with open('./input_data/counts_data/chrom_names_lengths.csv', 'r') as cnames:
+    filepath = resource_filename('eskedit', 'chrom_names_lengths.csv')
+    with open(filepath, 'r') as cnames:
         for line in cnames.readlines():
             split = line.split(',')
             names.append(split[0])
