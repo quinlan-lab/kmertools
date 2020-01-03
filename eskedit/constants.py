@@ -26,6 +26,45 @@ def get_autosome_names_grch38():
             'chr22']
 
 
+def get_grch38_chroms():
+    names = []
+    lengths = []
+    with open('./input_data/counts_data/chrom_names_lengths.csv', 'r') as cnames:
+        for line in cnames.readlines():
+            split = line.split(',')
+            names.append(split[0])
+            lengths.append(int(split[1]))
+    return dict(zip(names, lengths))
+
+
+def get_autosome_lengths_grch38():
+    """
+    :return: a dictionary mapping chromosome names to number of nucleotides
+    """
+    return {'chr1': 248956422,
+            'chr2': 242193529,
+            'chr3': 198295559,
+            'chr4': 190214555,
+            'chr5': 181538259,
+            'chr6': 170805979,
+            'chr7': 159345973,
+            'chr8': 145138636,
+            'chr9': 138394717,
+            'chr10': 133797422,
+            'chr11': 135086622,
+            'chr12': 133275309,
+            'chr13': 114364328,
+            'chr14': 107043718,
+            'chr15': 101991189,
+            'chr16': 90338345,
+            'chr17': 83257441,
+            'chr18': 80373285,
+            'chr19': 58617616,
+            'chr20': 64444167,
+            'chr21': 46709983,
+            'chr22': 50818468}
+
+
 def get_test_path():
     """
     :return: a tuple with vcf path and reference fasta path for testing

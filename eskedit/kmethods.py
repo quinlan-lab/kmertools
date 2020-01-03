@@ -171,7 +171,7 @@ def get_kmer_count(sequence, kmer_length, nprocs=None):
     for result in results[0]:
         for k, v in result.items():
             counts[k] += v
-    print("Done in " + str(time.time() - start))
+    #print("Done in " + str(time.time() - start))
     return counts
 
 
