@@ -131,6 +131,7 @@ class VCFRegion:
         try:
             self.start = int(start)
             self.stop = int(stop)
+            self.flist = (self.chrom, self.start, self.stop)
         except ValueError:
             raise ValueError('Start and Stop positions must be integers. Read %s as \'start\' and %s as \'stop\'' % (
                 str(start), str(stop)))
@@ -148,6 +149,9 @@ class VCFRegion:
 
     def size(self):
         return self.start - self.stop
+
+    def as_iter(self):
+        return self.chrom, self.start, self.stop
 
     def __str__(self):
         return str(self.chrom) + ':' + str(self.start) + '-' + str(self.stop)

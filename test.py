@@ -7,11 +7,18 @@ if __name__ == "__main__":
     bedpath = sys.argv[2]
     vcfpath = sys.argv[3]
     fastapath = sys.argv[4]
-    results = ek.train_model(bedpath, vcfpath, fastapath, kmer_size, invert_selection=True, clean_bed=True)
+    nprocs = int(sys.argv[5])
     outfile1 = 'regional_transitions_' + str(kmer_size) + 'mer.csv'
     outfile2 = 'regional_' + str(kmer_size) + 'mer_count.csv'
-    pd.DataFrame.from_dict(results['transitions'], orient='index').to_csv(outfile1)
-    pd.DataFrame.from_dict(results['ref_count'], orient='index').to_csv(outfile2)
+    result = ek.train_model(bedpath, vcfpath, fastapath, kmer_size, nprocs=nprocs, clean_bed=True,
+                            invert_selection=True)
+    pd.DataFrame.from_dict(result[0], orient='index').to_csv(outfile1)
+    pd.DataFrame.from_dict(result[1], orient='index').to_csv(outfile2)
+
+    # results = ek.train_model_old(bedpath, vcfpath, fastapath, kmer_size, invert_selection=True, clean_bed=True)
+
+    # pd.DataFrame.from_dict(results['transitions'], orient='index').to_csv(outfile1)
+    # pd.DataFrame.from_dict(results['ref_count'], orient='index').to_csv(outfile2)
 
 # # vcf_path = '/Users/simonelongo/too_big_for_icloud/gnomAD_v3/gnomad.genomes.r3.0.sites.vcf.bgz'
 # fasta_path = '/Users/simonelongo/too_big_for_icloud/ref_genome/hg38/hg38.fa'

@@ -171,7 +171,7 @@ def get_kmer_count(sequence, kmer_length, nprocs=None):
     for result in results[0]:
         for k, v in result.items():
             counts[k] += v
-    #print("Done in " + str(time.time() - start))
+    # print("Done in " + str(time.time() - start))
     return counts
 
 
@@ -306,13 +306,13 @@ def merge_transitions_ddc(dict_list, outfile=None):
     :param dict_list: type = iterable containing defaultdict(Counter)
     :return: a single defaultdict(Counter)
     """
-    print('Writing kmer transitions to file')
     master_count = defaultdict(Counter)
     for counts in dict_list:
         for k, v in counts.items():
             for alt, count in v.items():
                 master_count[k][alt] += count
     if outfile is not None and len(outfile) > 1:
+        print('Writing kmer transitions to file %s' % outfile)
         pd.DataFrame.from_dict(master_count, orient='index').to_csv(outfile)
     return master_count
 
