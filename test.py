@@ -8,10 +8,10 @@ if __name__ == "__main__":
     vcfpath = sys.argv[3]
     fastapath = sys.argv[4]
     nprocs = int(sys.argv[5])
-    outfile1 = 'regional_transitions_' + str(kmer_size) + 'mer.csv'
-    outfile2 = 'regional_' + str(kmer_size) + 'mer_count.csv'
-    result = ek.train_model(bedpath, vcfpath, fastapath, kmer_size, nprocs=nprocs, clean_bed=True,
-                            invert_selection=True)
+    outfile1 = 'regional_' + str(kmer_size) + 'mer_count.csv'
+    outfile2 = 'regional_transitions_' + str(kmer_size) + 'mer.csv'
+    result = ek.train_kmer_model(bedpath, vcfpath, fastapath, kmer_size, nprocs=nprocs, clean_bed=True,
+                                 invert_selection=True)
     pd.DataFrame.from_dict(result[0], orient='index').to_csv(outfile1)
     pd.DataFrame.from_dict(result[1], orient='index').to_csv(outfile2)
 

@@ -1,5 +1,4 @@
 from collections import defaultdict
-
 from eskedit.constants import get_grch38_chroms
 
 
@@ -242,3 +241,34 @@ class RegionContainer:
         for chromlist in inverse.values():
             inverse_list.extend(chromlist)
         return sorted(inverse_list)
+
+
+class KmerWindow:
+    def __init__(self, kmer_size, gnomad_samples=71702, test_samples=71702, counts_path=None):
+        if kmer_size not in [3, 5, 7]:
+            print('Only supports kmer sizes of 3, 5, and 7 right now.')
+            exit(0)
+        # self.window_size = window_size
+        self.gnomad_chroms = gnomad_samples * 2
+        self.test_chroms = test_samples * 2
+        self.kmer_size = kmer_size
+        from eskedit import get_counts_dict
+        self.counts_dict = get_counts_dict(kmer_size, alt_path=counts_path)
+
+    def calculate_expected(self, seq, raw_data=False):
+        kmer_count = 0
+        freq_sum = 0.0
+        seq = seq.upper()
+        # num_nucs = len(seq.replace('N', ''))
+        for start in range(len(seq) - self.kmer_size + 1):
+            next_k = seq[start:start + self.kmer_size]
+            if 'N' not in next_k:
+                kmer_count += 1
+                try:
+                    freq_sum += self.counts_dict[next_k]
+                except KeyError:
+                    freq_sum += 0
+        if raw_data:
+            return freq_sum, kmer_count, len(seq)  # num_nucs
+        else:
+            return freq_sum / self.gnomad_chroms * self.test_chroms  # / len(seq)

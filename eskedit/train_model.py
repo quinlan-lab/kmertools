@@ -7,11 +7,31 @@ import time
 from cyvcf2 import VCF
 from pyfaidx import Fasta
 import eskedit as ek
+import pandas as pd
 import multiprocessing as mp
 from eskedit import VCFRegion, get_autosome_lengths_grch38, get_grch38_chroms, RegionContainer, Variant
 
+"""
+This currently works with 3, 5, and 7mer contexts. The expected input is a tab separated
+file with the following fields in this order:
+CHROM   POS REF ALT`
+    1. CHROM - chromosome should be as reported by grch38
+    2. POS - position on chromosome aligned to hg38
+    3. REF - reference allele
+    4. ALT - alternate allele from VCF
+    * Additional fields after this will be ignored
+"""
 
-def get_bed_regions(bed_path, invert_selection=False, header=False, clean_bed=False):
+
+def get_bed_regions(bed_path, invert_selection=True, header=False, clean_bed=False):
+    """
+    Returns an iterable of
+    :param bed_path:
+    :param invert_selection:
+    :param header:
+    :param clean_bed:
+    :return:
+    """
     regions = RegionContainer()
     with open(bed_path, 'r') as bedfile:
         if header:
@@ -50,8 +70,8 @@ def model_region(vcf_path, fasta_path, kmer_size, region):
     return region_ref_counts, transitions
 
 
-def train_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=None, invert_selection=False, clean_bed=False,
-                header=False):
+def train_kmer_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=None, invert_selection=False, clean_bed=False,
+                     header=False):
     regions = get_bed_regions(bed_path, invert_selection=invert_selection, header=header, clean_bed=clean_bed)
     arguments = [(vcf_path, fasta_path, kmer_size, region.flist) for region in regions]
     pool = mp.Pool(nprocs)
@@ -68,34 +88,23 @@ def train_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=None, invert_s
     return master_ref_counts, merged_transitions
 
 
-def train_model_old(bed_path, vcf_path, fasta_path, kmer_size, nprocs=None, invert_selection=False, clean_bed=False,
-                    header=False):
-    regions = get_bed_regions(bed_path, invert_selection=invert_selection, header=header, clean_bed=clean_bed)
-    fasta = Fasta(fasta_path)
-    vcf = VCF(vcf_path)
-    start_idx_offset = int(kmer_size / 2 + 1)
-    kmer_mid_idx = int(start_idx_offset - 1)
-    total_counts = []
-    variant_positions = defaultdict(Variant)
-    variant_transitions = defaultdict(Counter)
-    for region in regions:
-        start = time.time()
-        seq = str(fasta.get_seq(region.chrom, region.start, region.stop))
-        total_counts.append(ek.get_kmer_count(seq, kmer_size, nprocs=1))
-        for variant in vcf(str(region)):
-            if ek.is_quality_singleton(variant):
-                new_var = Variant(variant=variant, fields=['vep'])
-                # TODO: with less memory overhead variant_positions[new_var.INDEX] = new_var
-                # take 7mer around variant. pyfaidx excludes start index and includes end index
-                adj_seq = fasta[str(new_var.CHROM)][(new_var.POS - start_idx_offset):(new_var.POS + kmer_mid_idx)].seq
-                if ek.complete_sequence(adj_seq):
-                    variant_transitions[adj_seq.upper()][new_var.ALT[0]] += 1
-        print('Finished region %s in %s' % (str(region), str(time.time() - start)))
-    master_count = Counter()
-    for count in total_counts:
-        for k, v in count.items():
-            master_count[k] += v
-    return {'variants': variant_positions, 'transitions': variant_transitions, 'ref_count': master_count}
+def generate_frequency_table(reference_counts, transition_counts, filepath=False, save_file=None):
+    if filepath:
+        counts = pd.read_csv(reference_counts, index_col=0).sort_index()
+        transitions = pd.read_csv(transition_counts, index_col=0).sort_index()
+    else:
+        counts = pd.DataFrame.from_dict(reference_counts, orient='index').sort_index()
+        transitions = pd.DataFrame.from_dict(transition_counts, orient='index').sort_index()
+    freq_table = pd.DataFrame()
+    if counts.shape[0] != transitions.shape[0]:
+        raise ValueError(
+            'The reference counts (read %d rows) and transition counts (read %d rows) must have the same number of rows' % (
+                counts.shape[0], transitions.shape[0]))
+    freq_table['frequency'] = transitions.sum(axis=1)
+    freq_table['frequency'] = freq_table['frequency'] / counts.iloc[:, 0]
+    if save_file is not None:
+        freq_table.to_csv(save_file)
+    return freq_table
 
 # if __name__ == "__main__":
 #     # test_path = '/Users/simonelongo/too_big_for_icloud/exons_grch38.bed'

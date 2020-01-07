@@ -6,9 +6,10 @@ import numpy as np
 from cyvcf2 import VCF
 import re
 import pandas as pd
+from pkg_resources import resource_filename
 from pyfaidx import Fasta
-from eskedit.kclass import Variant, Kmer
-from eskedit.ksplit import split_seq, get_split_vcf_regions
+from eskedit.kclass import Variant, Kmer, KmerWindow
+from eskedit.ksplit import split_seq, get_split_vcf_regions, get_split_chrom_vcf
 
 
 def ran_seq(seq_len):
@@ -378,3 +379,53 @@ def file_len(fname):
         for i, l in enumerate(f):
             pass
     return i + 1
+
+
+def get_counts_dict(kmer_size, alt_path=None):
+    if alt_path is None:
+        filepath = resource_filename('eskedit',
+                                     '../input_data/counts_data/{}mer_relative_mutation_freq_v3.csv'.format(kmer_size))
+        # path = './input_data/counts_data/{}mer_relative_mutation_freq_v3.csv'.format(kmer_size)
+    else:
+        filepath = alt_path
+    df = pd.read_csv(filepath, index_col=0)
+    # df['probability'] = df.iloc[:, :4].apply
+    return dict(zip(df.index, df.frequency))
+
+
+def count_singletons(vcf_region):
+    count = 0
+    for v in vcf_region:
+        if is_quality_singleton(v):
+            count += 1
+    return count
+
+
+def query_region(vcf_path, fasta, chrom, kmer_size, bins=100, counts_path=None):
+    # TODO: Add window size!!!
+    vcf = VCF(vcf_path)
+    fasta = Fasta(fasta)
+    regions = get_split_chrom_vcf(vcf_path, chrom, bins)
+    window = KmerWindow(kmer_size, counts_path=counts_path)
+    print('region\tactual\texpected\tratio')
+    expected, actual = [], []
+    for r in regions:
+        exp = window.calculate_expected(str(fasta.get_seq(r.chrom, r.start, r.stop)))
+        act = count_singletons(vcf(str(r)))
+        expected.append(exp)
+        actual.append(act)
+        if exp == 0:
+            ratio = 0
+        else:
+            ratio = act / exp
+        print("%s\t%d\t%f\t%f" % (str(r), act, exp, ratio))
+
+
+def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, counts_path=None):
+    # TODO: implement where bed regions are read and then analyzed for expected v actual
+
+    pass
+
+
+if __name__ == "__main__":
+    print("Testing from kmethods.")
