@@ -8,7 +8,7 @@ import re
 import pandas as pd
 from pkg_resources import resource_filename
 from pyfaidx import Fasta
-from eskedit.kclass import Variant, Kmer, KmerWindow
+from eskedit.kclass import Variant, Kmer, KmerWindow, GRegion
 from eskedit.ksplit import split_seq, get_split_vcf_regions, get_split_chrom_vcf
 
 
@@ -178,8 +178,8 @@ def get_kmer_count(sequence, kmer_length, nprocs=None):
 
 def process_region(region, vcf_path, ref_fasta, kmer_size, singletons, nsingletons):
     """
-    Process a VCFRegion to look for variants and sequence context
-    :param region: VCFRegion as defined in kclass.py
+    Process a GRegion to look for variants and sequence context
+    :param region: GRegion as defined in kclass.py
     :param vcf_path: path to VCF file
     :param ref_fasta: path to reference genome in '.fa' format
     :param kmer_size: integer of total length of k-mer
@@ -375,7 +375,7 @@ def file_len(fname):
     :param fname: path to file
     :return: number of lines in the file
     """
-    with open(fname) as f:
+    with open(fname, 'r') as f:
         for i, l in enumerate(f):
             pass
     return i + 1
@@ -421,9 +421,42 @@ def query_region(vcf_path, fasta, chrom, kmer_size, bins=100, counts_path=None):
         print("%s\t%d\t%f\t%f" % (str(r), act, exp, ratio))
 
 
-def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, counts_path=None):
-    # TODO: implement where bed regions are read and then analyzed for expected v actual
+def query_bed_region(region, vcf_path, fasta, kmer_size, bins, counts_path):
+    # TODO: Add window size!!!
+    vcf = VCF(vcf_path)
+    fasta = Fasta(fasta)
+    window = KmerWindow(kmer_size, counts_path=counts_path)
+    print('region\tactual\texpected\tratio')
+    expected, actual = [], []
+    exp = window.calculate_expected(str(fasta.get_seq(region, region.start, region.stop)))
+    act = count_singletons(vcf(str(region)))
+    expected.append(exp)
+    actual.append(act)
+    if exp == 0:
+        ratio = 0
+    else:
+        ratio = act / exp
+    return "%s\t%d\t%f\t%f\n" % (str(region), act, exp, ratio)
 
+
+def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, bins=100, counts_path=None, outfile=None):
+    # TODO: implement where bed regions are read and then analyzed for expected v actual
+    regions = []
+    with open(bed_path, 'r') as bedfile:
+        for line in bedfile.readlines():
+            fields = line.split('\t')
+            regions.append(GRegion(fields[0], fields[1], fields[2]))
+    arguments = [(region, vcf_path, fasta_path, kmer_size, bins, counts_path) for region in regions]
+    pool = mp.Pool(nprocs)
+    results = pool.apply_async(query_bed_region, args=arguments)
+    pool.close()
+    pool.join()
+    if outfile is None:
+        outfile = '{}mer_expected_mutation_count.dat'
+    with open(outfile, 'w') as output:
+        output.write('Region\tObserved\tExpected\tObsToExp\n')
+        for result in results.get():
+            output.write(result)
     pass
 
 

@@ -4,7 +4,7 @@ from collections import defaultdict
 from cyvcf2 import VCF, Writer
 import numpy as np
 from eskedit.constants import get_autosome_names_grch38
-from eskedit.kclass import VCFRegion
+from eskedit.kclass import GRegion
 
 
 def get_split_chrom_vcf(vcf_path, chrom, nprocs):
@@ -23,11 +23,11 @@ def get_split_chrom_vcf(vcf_path, chrom, nprocs):
     stop = chunk_size
     for i in range(nprocs):
         if i < nprocs - 1:
-            regions.append(VCFRegion(chrom, start, stop))
+            regions.append(GRegion(chrom, start, stop))
             start = stop
             stop += chunk_size
         else:
-            regions.append(VCFRegion(chrom, start, chrom_len))
+            regions.append(GRegion(chrom, start, chrom_len))
     return regions
 
 
@@ -51,14 +51,14 @@ def get_split_vcf_regions(vcf_path, nprocs):
                 continue
             remaining_chunk = chunk_size - current_chunk
             if remaining_chunk <= (vcf.seqlens[current_chromosome] - chrom_pos):
-                new_region = VCFRegion(vcf.seqnames[current_chromosome], chrom_pos, chrom_pos + remaining_chunk)
+                new_region = GRegion(vcf.seqnames[current_chromosome], chrom_pos, chrom_pos + remaining_chunk)
                 region.append(new_region)
                 chrom_pos += remaining_chunk
                 current_chunk += new_region.size()
                 gen_pos += new_region.size()
                 continue
             else:  # remaining chunk can fit remainder of chromosome and then some
-                new_region = VCFRegion(vcf.seqnames[current_chromosome], chrom_pos, vcf.seqlens[current_chromosome])
+                new_region = GRegion(vcf.seqnames[current_chromosome], chrom_pos, vcf.seqlens[current_chromosome])
                 region.append(new_region)
                 current_chunk += new_region.size()
                 gen_pos += new_region.size()

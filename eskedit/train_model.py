@@ -9,7 +9,7 @@ from pyfaidx import Fasta
 import eskedit as ek
 import pandas as pd
 import multiprocessing as mp
-from eskedit import VCFRegion, get_autosome_lengths_grch38, get_grch38_chroms, RegionContainer, Variant
+from eskedit import GRegion, get_autosome_lengths_grch38, get_grch38_chroms, RegionContainer, Variant
 
 """
 This currently works with 3, 5, and 7mer contexts. The expected input is a tab separated
@@ -25,12 +25,12 @@ CHROM   POS REF ALT`
 
 def get_bed_regions(bed_path, invert_selection=True, header=False, clean_bed=False):
     """
-    Returns an iterable of
-    :param bed_path:
-    :param invert_selection:
-    :param header:
-    :param clean_bed:
-    :return:
+    Returns an iterable of GRegions specified by the filepath in bed format.
+    :param bed_path:            Path to bed file
+    :param invert_selection:    True (default) will return GRegions not in the file
+    :param header:              True if file has a header line. False (default)
+    :param clean_bed:           False (default) means bed file may have overlapping regions which will be merged. True means each line is added independently of position
+    :return:                    Iterable of GRegions
     """
     regions = RegionContainer()
     with open(bed_path, 'r') as bedfile:
@@ -39,9 +39,9 @@ def get_bed_regions(bed_path, invert_selection=True, header=False, clean_bed=Fal
         for line in bedfile.readlines():
             fields = line.split('\t')
             if clean_bed:
-                regions.add_distinct_region(VCFRegion(fields[0], fields[1], fields[2]))
+                regions.add_distinct_region(GRegion(fields[0], fields[1], fields[2]))
             else:
-                regions.add_region(VCFRegion(fields[0], fields[1], fields[2]))
+                regions.add_region(GRegion(fields[0], fields[1], fields[2]))
     if invert_selection:
         return regions.get_inverse()
     else:
@@ -70,16 +70,33 @@ def model_region(vcf_path, fasta_path, kmer_size, region):
     return region_ref_counts, transitions
 
 
-def train_kmer_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=None, invert_selection=False, clean_bed=False,
+def train_kmer_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=None, invert_selection=True, clean_bed=False,
                      header=False):
+    """
+    Builds the counts tables required for the k-mer model. Returned as 2 dictionaries.
+    @param bed_path:            path to bed file
+    @param vcf_path:            path to vcf file
+    @param fasta_path:          path to reference fasta
+    @param kmer_size:
+    @param nprocs:              number of processors to use
+    @param invert_selection:    True (default) process regions NOT specified by bed file
+    @param clean_bed:           False (default) if the bed needs to be merged. True processes regions as is
+    @param header:              False (default) if the bed file does not have a header
+    @return:
+    """
     regions = get_bed_regions(bed_path, invert_selection=invert_selection, header=header, clean_bed=clean_bed)
+    # Bundle arguments to pass to 'model_region' function
     arguments = [(vcf_path, fasta_path, kmer_size, region.flist) for region in regions]
     pool = mp.Pool(nprocs)
+    # Distribute workload
     results = pool.starmap_async(model_region, arguments)
     pool.close()
     pool.join()
+    # Data structure for counting k-mer occurrences in reference sequences
     master_ref_counts = Counter()
+    # Contains data for which k-mers mutated to which nucleotide
     transitions_list = []
+    # merge results from different threads
     for result in results.get():
         for k, v in result[0].items():
             master_ref_counts[k] += v

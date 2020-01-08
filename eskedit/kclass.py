@@ -123,7 +123,7 @@ class Kmer:
         return self.sequence[item]
 
 
-class VCFRegion:
+class GRegion:
     def __init__(self, chrom, start, stop):
         # self.region = [chrom, start, stop]
         self.chrom = chrom
@@ -228,14 +228,14 @@ class RegionContainer:
                 next_start = 1
                 for i, reg in enumerate(chrom_regions):
                     if i == 0 and int(reg.start) > 1:
-                        inv_reg.append(VCFRegion(chrom, 1, reg.start))
+                        inv_reg.append(GRegion(chrom, 1, reg.start))
                     elif int(reg.start) <= 1:
                         next_start = int(reg.stop)
                     else:
-                        inv_reg.append(VCFRegion(chrom, next_start, reg.start))
+                        inv_reg.append(GRegion(chrom, next_start, reg.start))
                     next_start = int(reg.stop)
                 if int(chrom_regions[-1].stop) < chrom_names[chrom]:
-                    inv_reg.append(VCFRegion(chrom, next_start, chrom_names[chrom]))
+                    inv_reg.append(GRegion(chrom, next_start, chrom_names[chrom]))
                 inverse[chrom] = tuple(inv_reg)
         inverse_list = []
         for chromlist in inverse.values():
