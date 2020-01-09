@@ -422,13 +422,13 @@ def query_region(vcf_path, fasta, chrom, kmer_size, bins=100, counts_path=None):
 
 
 def query_bed_region(region, vcf_path, fasta, kmer_size, bins, counts_path):
-    # TODO: Add window size!!!
+    # TODO: Add binning somehow (either keep equal size or equal number of bins
+    start = time.time()
     vcf = VCF(vcf_path)
     fasta = Fasta(fasta)
     window = KmerWindow(kmer_size, counts_path=counts_path)
-    print('region\tactual\texpected\tratio')
     expected, actual = [], []
-    exp = window.calculate_expected(str(fasta.get_seq(region, region.start, region.stop)))
+    exp = window.calculate_expected(str(fasta.get_seq(region.chrom, region.start, region.stop)))
     act = count_singletons(vcf(str(region)))
     expected.append(exp)
     actual.append(act)
@@ -436,28 +436,34 @@ def query_bed_region(region, vcf_path, fasta, kmer_size, bins, counts_path):
         ratio = 0
     else:
         ratio = act / exp
+    print('{0:<30} {1:>10} {2:>20} {3:>20}'.format(str(region), str(act), str(exp), str(ratio)))
     return "%s\t%d\t%f\t%f\n" % (str(region), act, exp, ratio)
 
 
-def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, bins=100, counts_path=None, outfile=None):
+def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, bins=20, counts_path=None, outfile=None):
     # TODO: implement where bed regions are read and then analyzed for expected v actual
     regions = []
+    if outfile is None:
+        outfile = '{}mer_expected_mutation_count.dat'.format(kmer_size)
+    with open(outfile, 'w') as output:
+        output.write('Region\tObserved\tExpected\tObsToExp\n')
     with open(bed_path, 'r') as bedfile:
         for line in bedfile.readlines():
             fields = line.split('\t')
             regions.append(GRegion(fields[0], fields[1], fields[2]))
+    print('{0:<30} {1:>10} {2:>20} {3:>20}'.format('Region', 'Observed', 'Expected', 'Obs/Exp'))
     arguments = [(region, vcf_path, fasta_path, kmer_size, bins, counts_path) for region in regions]
     pool = mp.Pool(nprocs)
-    results = pool.apply_async(query_bed_region, args=arguments)
+    results = pool.starmap_async(query_bed_region, arguments)
     pool.close()
     pool.join()
-    if outfile is None:
-        outfile = '{}mer_expected_mutation_count.dat'
     with open(outfile, 'w') as output:
-        output.write('Region\tObserved\tExpected\tObsToExp\n')
         for result in results.get():
             output.write(result)
     pass
+
+
+
 
 
 if __name__ == "__main__":
