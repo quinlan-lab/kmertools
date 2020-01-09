@@ -437,7 +437,7 @@ def query_bed_region(region, vcf_path, fasta, kmer_size, bins, counts_path):
     else:
         ratio = act / exp
     print('{0:<30} {1:>10} {2:>20} {3:>20}'.format(str(region), str(act), str(exp), str(ratio)))
-    return "%s\t%d\t%f\t%f\n" % (str(region), act, exp, ratio)
+    return "%s\t%s\t%s\t%d\t%f\t%f\n" % (str(region.chrom), str(region.start), str(region.stop), act, exp, ratio)
 
 
 def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, bins=20, counts_path=None, outfile=None):
