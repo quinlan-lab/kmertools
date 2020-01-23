@@ -10,6 +10,7 @@ import eskedit as ek
 import pandas as pd
 import multiprocessing as mp
 from eskedit import GRegion, get_autosome_lengths_grch38, get_grch38_chroms, RegionContainer, Variant
+import sys
 
 """
 This currently works with 3, 5, and 7mer contexts. The expected input is a tab separated
@@ -64,6 +65,9 @@ def model_region(master_ref_counts, transitions_list, vcf_path, fasta_path, kmer
             # TODO: with less memory overhead variant_positions[new_var.INDEX] = new_var
             # take 7mer around variant. pyfaidx excludes start index and includes end index
             adj_seq = fasta[str(new_var.CHROM)][(new_var.POS - start_idx_offset):(new_var.POS + kmer_mid_idx)].seq
+            if adj_seq[kmer_mid_idx] != variant.REF:
+                print('WARNING: Reference mismatch\tFasta REF: %s\tVCF REF: %s' % (adj_seq[kmer_mid_idx], variant.REF),
+                      file=sys.stderr)
             if ek.complete_sequence(adj_seq):
                 transitions[adj_seq.upper()][new_var.ALT[0]] += 1
             # del new_var
