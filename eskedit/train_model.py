@@ -65,7 +65,7 @@ def model_region(master_ref_counts, transitions_list, vcf_path, fasta_path, kmer
             # TODO: with less memory overhead variant_positions[new_var.INDEX] = new_var
             # take 7mer around variant. pyfaidx excludes start index and includes end index
             adj_seq = fasta[str(new_var.CHROM)][(new_var.POS - start_idx_offset):(new_var.POS + kmer_mid_idx)].seq
-            if adj_seq[kmer_mid_idx] != variant.REF:
+            if str(adj_seq[kmer_mid_idx]).upper() != str(variant.REF).upper():
                 print('WARNING: Reference mismatch\tFasta REF: %s\tVCF REF: %s' % (adj_seq[kmer_mid_idx], variant.REF),
                       file=sys.stderr)
             if ek.complete_sequence(adj_seq):
