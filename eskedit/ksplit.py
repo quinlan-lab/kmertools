@@ -3,7 +3,7 @@ import random
 from collections import defaultdict
 from cyvcf2 import VCF, Writer
 import numpy as np
-from eskedit.constants import get_autosome_names_grch38
+from eskedit.constants import get_autosome_names_grch38, get_autosome_lengths_grch38
 from eskedit.kclass import GRegion
 
 
@@ -90,6 +90,31 @@ def split_seq(sequence, nprocs, overlap=None):
         if end > len(sequence):
             end = len(sequence)
     return args
+
+
+def get_bed_windows(window, overlap=0, outfile=None, bins=False):
+    chrom_info = get_autosome_lengths_grch38()
+    regions = []
+    for chrom, length in chrom_info.items():
+        if bins:
+            window_size = length // window + 1
+        else:
+            window_size = window
+        if window_size > length:
+            print("Window size is larger than chromosome. Please reduce window size")
+            exit(1)
+        if overlap >= window_size:
+            print("Overlap value (%d) is too large for window size (%d). Using overlap=0" % (overlap, window_size))
+            overlap = 0
+        current_position = 1
+        while current_position < length:
+            regions.append((chrom, max(1, current_position - overlap), min(length, current_position + window_size - 1)))
+            current_position += window_size
+    if outfile is not None:
+        with open(outfile, 'w') as bedfile:
+            for region in regions:
+                bedfile.write('%s\t%s\t%s\n' % (str(region[0]), str(region[1]), str(region[2])))
+    return regions
 
 
 def append_variants_to_vcf(filename, chrom, start, stop, outfile='samp_build38.vcf'):

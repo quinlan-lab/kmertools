@@ -463,8 +463,5 @@ def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, bins=
     pass
 
 
-
-
-
 if __name__ == "__main__":
     print("Testing from kmethods.")

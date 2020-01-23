@@ -48,7 +48,7 @@ def get_bed_regions(bed_path, invert_selection=True, header=False, clean_bed=Fal
         return regions.get_regions()
 
 
-def model_region(vcf_path, fasta_path, kmer_size, region):
+def model_region(master_ref_counts, transitions_list, vcf_path, fasta_path, kmer_size, region):
     start = time.time()
     fasta = Fasta(fasta_path)
     vcf = VCF(vcf_path)
@@ -66,8 +66,24 @@ def model_region(vcf_path, fasta_path, kmer_size, region):
             adj_seq = fasta[str(new_var.CHROM)][(new_var.POS - start_idx_offset):(new_var.POS + kmer_mid_idx)].seq
             if ek.complete_sequence(adj_seq):
                 transitions[adj_seq.upper()][new_var.ALT[0]] += 1
+            # del new_var
+    lock.acquire()
+    try:
+        for k, v in region_ref_counts.items():
+            master_ref_counts[k] += v
+        for k, v in transitions.items():
+            for alt, count in v.items():
+                transitions_list[k][alt] += count
+    finally:
+        lock.release()
     print('Finished region %s in %s' % (str(region), str(time.time() - start)))
-    return region_ref_counts, transitions
+    return  # region_ref_counts, transitions
+
+
+def init_lock(l):
+    # source: https://stackoverflow.com/questions/25557686/python-sharing-a-lock-between-processes
+    global lock
+    lock = l
 
 
 def train_kmer_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=None, invert_selection=True, clean_bed=False,
@@ -84,25 +100,31 @@ def train_kmer_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=None, inv
     @param header:              False (default) if the bed file does not have a header
     @return:
     """
+    l = mp.Lock()
+    master_ref_counts = Counter()
+    master_transitions = defaultdict(Counter)
+
     regions = get_bed_regions(bed_path, invert_selection=invert_selection, header=header, clean_bed=clean_bed)
     # Bundle arguments to pass to 'model_region' function
-    arguments = [(vcf_path, fasta_path, kmer_size, region.flist) for region in regions]
-    pool = mp.Pool(nprocs)
+    arguments = [(master_ref_counts, master_transitions, vcf_path, fasta_path, kmer_size, region.flist) for region
+                 in regions]
+    pool = mp.Pool(nprocs, initializer=init_lock, initargs=(l,))
     # Distribute workload
-    results = pool.starmap_async(model_region, arguments)
+    pool.starmap(model_region, arguments)
     pool.close()
     pool.join()
     # Data structure for counting k-mer occurrences in reference sequences
-    master_ref_counts = Counter()
-    # Contains data for which k-mers mutated to which nucleotide
-    transitions_list = []
-    # merge results from different threads
-    for result in results.get():
-        for k, v in result[0].items():
-            master_ref_counts[k] += v
-        transitions_list.append(result[1])
-    merged_transitions = ek.merge_transitions_ddc(transitions_list, outfile=None)
-    return master_ref_counts, merged_transitions
+    # master_ref_counts = Counter()
+    # # Contains data for which k-mers mutated to which nucleotide
+    # transitions_list = []
+    # # merge results from different threads
+    # for result in results.get():
+    #     for k, v in result[0].items():
+    #         master_ref_counts[k] += v
+    #
+    #     transitions_list.append(result[1])
+    # merged_transitions = ek.merge_transitions_ddc(transitions_list, outfile=None)
+    return master_ref_counts, master_transitions
 
 
 def generate_frequency_table(reference_counts, transition_counts, filepath=False, save_file=None):
