@@ -40,8 +40,8 @@ def test_train_kmer_model(arguments):
     #                 6. invert bed selection (True/False)
     #             """)
     #     exit(1)
-    outfile1 = 'TEST2regional_' + str(kmer_size) + 'mer_count.csv'
-    outfile2 = 'TEST2regional_transitions_' + str(kmer_size) + 'mer.csv'
+    outfile1 = 'regional_' + str(kmer_size) + 'mer_count.csv'
+    outfile2 = 'regional_transitions_' + str(kmer_size) + 'mer.csv'
     result = ek.train_kmer_model(bedpath, vcfpath, fastapath, kmer_size, nprocs=numprocs, clean_bed=True,
                                  invert_selection=invert_bed_selection)
     print(result)
