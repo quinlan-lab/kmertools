@@ -1,4 +1,5 @@
-from collections import defaultdict
+from collections import defaultdict, Counter
+import array
 from eskedit.constants import get_grch38_chroms
 
 
@@ -272,3 +273,23 @@ class KmerWindow:
             return freq_sum, kmer_count, len(seq)  # num_nucs
         else:
             return freq_sum / self.gnomad_chroms * self.test_chroms  # / len(seq)
+
+
+class DataContainer:
+    def __init__(self):
+        self.ref_count = Counter()
+        #self.transitions = defaultdict(lambda: array.array('L', [0, 0, 0, 0]))
+        self.transitions = defaultdict(Counter)
+        self.idx_nuc = list('ACGT')
+
+    def add_count(self, region_ref_counts):
+        for k, v in region_ref_counts.items():
+            self.ref_count[k] += v
+
+    def add_transition(self, trans):
+        for k, v in trans.items():
+            for ialt, count in enumerate(v):
+                self.transitions[k][self.idx_nuc[ialt]] += count
+
+    def get(self):
+        return self.ref_count, self.transitions

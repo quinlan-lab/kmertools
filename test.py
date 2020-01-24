@@ -21,10 +21,13 @@ def test_train_kmer_model(arguments):
         invert_bed_selection = bool(arguments[5])
     elif len(arguments) == 1:
         kmer_size = 3
-        bedpath = '/Users/simonelongo/too_big_for_icloud/merged_exons_grch38.bed'
+        # big bed
+        #bedpath = '/Users/simonelongo/too_big_for_icloud/merged_exons_grch38.bed'
+        # small bed
+        bedpath = '/Users/simonelongo/too_big_for_icloud/small_test.bed'
         vcfpath = '/Users/simonelongo/too_big_for_icloud/gnomAD_v3/gnomad.genomes.r3.0.sites.vcf.bgz'
         fastapath = '/Users/simonelongo/too_big_for_icloud/ref_genome/hg38/hg38.fa'
-        numprocs = 4
+        numprocs = 1
         invert_bed_selection = False
     else:
         return
@@ -37,12 +40,13 @@ def test_train_kmer_model(arguments):
     #                 6. invert bed selection (True/False)
     #             """)
     #     exit(1)
-    outfile1 = 'regional_' + str(kmer_size) + 'mer_count.csv'
-    outfile2 = 'regional_transitions_' + str(kmer_size) + 'mer.csv'
+    outfile1 = 'TEST2regional_' + str(kmer_size) + 'mer_count.csv'
+    outfile2 = 'TEST2regional_transitions_' + str(kmer_size) + 'mer.csv'
     result = ek.train_kmer_model(bedpath, vcfpath, fastapath, kmer_size, nprocs=numprocs, clean_bed=True,
                                  invert_selection=invert_bed_selection)
+    print(result)
     pd.DataFrame.from_dict(result[0], orient='index').to_csv(outfile1)
-    pd.DataFrame.from_dict(result[1], orient='index').to_csv(outfile2)
+    pd.DataFrame.from_dict(result[1], orient='index', columns=list('ACGT')).to_csv(outfile2)
 
 
 def test_check_bed_regions_for_expected_mutations(arguments):

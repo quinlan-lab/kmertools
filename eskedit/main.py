@@ -52,3 +52,6 @@ if __name__ == "__main__":
     #     # vcf_process.vcf_singleton_analysis(vcf_path, fasta_path, kmer_len, nprocs=nthreads, var_out_file=o_file)
     #     print("Done in " + str(time.time() - start))
     #     exit(0)
+
+
+
