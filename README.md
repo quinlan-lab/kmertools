@@ -1,6 +1,11 @@
 # kmertools
 This is currently being developed and has some instability.
 
+Requires the installation of `cyvcf2`, `numpy`, `pandas`, and `pyfaidx`.
+```
+pip install cyvcf2 numpy pandas pyfaidx 
+```
+
 See usage below. Note that the command requires either `--query` or `--train` as a flag.
 
 ```
