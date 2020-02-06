@@ -2,6 +2,12 @@ import eskedit as ek
 import sys
 import pandas as pd
 import argparse
+from signal import signal, SIGINT
+
+
+def sigint_handler(signal_received, frame):
+    print('SIGINT or CTRL-C detected. Exiting gracefully')
+    exit(0)
 
 
 def test_train_kmer_model(arguments):
@@ -58,13 +64,14 @@ def test_train_kmer_model(arguments):
 def test_check_bed_regions_for_expected_mutations(arguments):
     if len(arguments) == 1:
         kmer_size = 7
-        bedpath = '/Users/simonelongo/too_big_for_icloud/merged_exons_grch38.bed'
+        #bedpath = '/Users/simonelongo/too_big_for_icloud/merged_exons_grch38.bed'
+        bedpath = '/Users/simonelongo/Downloads/3primeUTR.refseq.grch38.hg38.bed'
         vcfpath = '/Users/simonelongo/too_big_for_icloud/gnomAD_v3/gnomad.genomes.r3.0.sites.vcf.bgz'
         fastapath = '/Users/simonelongo/too_big_for_icloud/ref_genome/hg38/hg38.fa'
         numprocs = 1
         countspath = '/Users/simonelongo/Documents/QuinlanLabFiles/kmertools/input_data/counts_data/7mer_relative_freq_noncoding.csv'
-        strand = None
-        bednames = None
+        strand = 5
+        bednames = 3
     elif len(arguments) == 8:
         kmer_size = int(arguments[0])
         bedpath = arguments[1]
@@ -91,6 +98,9 @@ def test_check_bed_regions_for_expected_mutations(arguments):
 
 
 if __name__ == "__main__":
+    # register SIGINT handler
+    signal(SIGINT, sigint_handler)
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--query', action='store_true',
                         help='Query regions specified in bedfile for an expected number of mutations based on provided counts data.')

@@ -429,7 +429,7 @@ def query_bed_region(region, vcf_path, fasta, kmer_size, bins, counts_path):
     window = KmerWindow(kmer_size, counts_path=counts_path)
     expected, actual = [], []
     if region.strand is not None:
-        if region.strand == '-':
+        if is_dash(region.strand):
             sequence = fasta.get_seq(region.chrom, region.start, region.stop).complement.seq.upper()
         else:
             sequence = fasta.get_seq(region.chrom, region.start, region.stop).seq.upper()
@@ -443,7 +443,7 @@ def query_bed_region(region, vcf_path, fasta, kmer_size, bins, counts_path):
         ratio = 0
     else:
         ratio = act / exp
-    print('{0:<30} {1:>10} {2:>20} {3:>20}'.format(str(region), str(act), str(exp), str(ratio)))
+    print('{0:<30} {1:>10} {2:>20} {3:>20}'.format(region.printstr()[:29], str(act), str(exp), str(ratio)))
     # return "%s\t%s\t%s\t%d\t%f\t%f\n" % (str(region.chrom), str(region.start), str(region.stop), act, exp, ratio)
     return "%s\t%d\t%f\t%f\n" % (region.printstr(), act, exp, ratio)
 
@@ -486,6 +486,13 @@ def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, bins=
         for result in results.get():
             output.write(result)
     pass
+
+
+def is_dash(pdash):
+    regex = '[\u002D\u058A\u05BE\u1400\u1806\u2010-\u2015\u2E17\u2E1A\u2E3A\u2E3B\u2E40\u301C\u3030\u30A0\uFE31\uFE32\uFE58\uFE63\uFF0D]'
+    if re.match(regex, pdash) is not None:
+        return True
+    return False
 
 
 if __name__ == "__main__":

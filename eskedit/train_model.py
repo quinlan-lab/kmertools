@@ -75,7 +75,7 @@ def model_region(data_container, vcf_path, fasta_path, kmer_size, region):
     start_idx_offset = int(kmer_size / 2 + 1)
     kmer_mid_idx = int(start_idx_offset - 1)
     if region.strand is not None:
-        if region.strand == '-':
+        if ek.is_dash(region.strand):
             sequence = fasta.get_seq(region[0], region[1], region[2]).complement.seq.upper()
         else:
             sequence = fasta.get_seq(region[0], region[1], region[2]).seq.upper()
@@ -109,10 +109,12 @@ def train_kmer_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=None, inv
                      header=False, strand_col=None, bed_names_col=None):
     """
     Builds the counts tables required for the k-mer model. Returned as 2 dictionaries.
+    @param strand_col:          zero-based column index of strand information from bed file
+    @param bed_names_col:       zero-based column index of name information from bed file
     @param bed_path:            path to bed file
     @param vcf_path:            path to vcf file
     @param fasta_path:          path to reference fasta
-    @param kmer_size:
+    @param kmer_size:           NOTE unpredictable behavior may occur if even numbers are used here.
     @param nprocs:              number of processors to use
     @param invert_selection:    True (default) process regions NOT specified by bed file
     @param clean_bed:           False (default) if the bed needs to be merged. True processes regions as is
