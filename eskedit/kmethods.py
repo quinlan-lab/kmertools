@@ -428,8 +428,15 @@ def query_bed_region(region, vcf_path, fasta, kmer_size, bins, counts_path):
     fasta = Fasta(fasta)
     window = KmerWindow(kmer_size, counts_path=counts_path)
     expected, actual = [], []
-    exp = window.calculate_expected(str(fasta.get_seq(region.chrom, region.start, region.stop)))
-    act = count_singletons(vcf(str(region)))
+    if region.strand is not None:
+        if region.strand == '-':
+            sequence = fasta.get_seq(region.chrom, region.start, region.stop).complement.seq.upper()
+        else:
+            sequence = fasta.get_seq(region.chrom, region.start, region.stop).seq.upper()
+    else:
+        sequence = fasta.get_seq(region.chrom, region.start, region.stop).seq.upper()
+    exp = window.calculate_expected(sequence)  # this does account for strandedness
+    act = count_singletons(vcf(str(region)))  # does not account for strandedness here
     expected.append(exp)
     actual.append(act)
     if exp == 0:
@@ -437,20 +444,38 @@ def query_bed_region(region, vcf_path, fasta, kmer_size, bins, counts_path):
     else:
         ratio = act / exp
     print('{0:<30} {1:>10} {2:>20} {3:>20}'.format(str(region), str(act), str(exp), str(ratio)))
-    return "%s\t%s\t%s\t%d\t%f\t%f\n" % (str(region.chrom), str(region.start), str(region.stop), act, exp, ratio)
+    # return "%s\t%s\t%s\t%d\t%f\t%f\n" % (str(region.chrom), str(region.start), str(region.stop), act, exp, ratio)
+    return "%s\t%d\t%f\t%f\n" % (region.printstr(), act, exp, ratio)
 
 
-def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, bins=20, counts_path=None, outfile=None):
+def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, bins=20, counts_path=None, outfile=None,
+                      strand_col=None, bed_names_col=None):
     # TODO: implement where bed regions are read and then analyzed for expected v actual
+    additional_fields = defaultdict(int)
+    if strand_col is not None:
+        try:
+            strand_col = int(strand_col)
+            additional_fields['strand'] = strand_col
+        except ValueError:
+            strand_col = None
+    if bed_names_col is not None:
+        try:
+            bed_names_col = int(bed_names_col)
+            additional_fields['name'] = bed_names_col
+        except ValueError:
+            bed_names_col = None
     regions = []
     if outfile is None:
         outfile = '{}mer_expected_mutation_count.dat'.format(kmer_size)
     with open(outfile, 'w') as output:
         output.write('Region\tObserved\tExpected\tObsToExp\n')
     with open(bed_path, 'r') as bedfile:
+        kwargs = defaultdict(str)
         for line in bedfile.readlines():
             fields = line.split('\t')
-            regions.append(GRegion(fields[0], fields[1], fields[2]))
+            for k, v in additional_fields.items():
+                kwargs[k] = fields[v]
+            regions.append(GRegion(*[fields[0], fields[1], fields[2]], **kwargs))
     print('{0:<30} {1:>10} {2:>20} {3:>20}'.format('Region', 'Observed', 'Expected', 'Obs/Exp'))
     arguments = [(region, vcf_path, fasta_path, kmer_size, bins, counts_path) for region in regions]
     pool = mp.Pool(nprocs)

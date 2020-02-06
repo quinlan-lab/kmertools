@@ -25,7 +25,7 @@ CHROM   POS REF ALT`
 """
 
 
-def get_bed_regions(bed_path, invert_selection=True, header=False, clean_bed=False):
+def get_bed_regions(bed_path, invert_selection=True, header=False, clean_bed=False, strand_col=None, bed_names_col=None):
     """
     Returns an iterable of GRegions specified by the filepath in bed format.
     :param bed_path:            Path to bed file
@@ -34,16 +34,34 @@ def get_bed_regions(bed_path, invert_selection=True, header=False, clean_bed=Fal
     :param clean_bed:           False (default) means bed file may have overlapping regions which will be merged. True means each line is added independently of position
     :return:                    Iterable of GRegions
     """
+    additional_fields = defaultdict(int)
+    if strand_col is not None:
+        try:
+            strand_col = int(strand_col)
+            additional_fields['strand'] = strand_col
+        except ValueError:
+            strand_col = None
+    if bed_names_col is not None:
+        try:
+            bed_names_col = int(bed_names_col)
+            additional_fields['name'] = bed_names_col
+        except ValueError:
+            bed_names_col = None
     regions = RegionContainer()
     with open(bed_path, 'r') as bedfile:
+        kwargs = defaultdict(str)
         if header:
             bedfile.readline()
         for line in bedfile.readlines():
             fields = line.split('\t')
+            # add keyword arguments to pass to GRegion constructor
+            for k, v in additional_fields.items():
+                kwargs[k] = fields[v]
+
             if clean_bed:
-                regions.add_distinct_region(GRegion(fields[0], fields[1], fields[2]))
+                regions.add_distinct_region(GRegion(*[fields[0], fields[1], fields[2]], **kwargs))
             else:
-                regions.add_region(GRegion(fields[0], fields[1], fields[2]))
+                regions.add_region(GRegion(*[fields[0], fields[1], fields[2]], **kwargs))
     if invert_selection:
         return regions.get_inverse()
     else:
@@ -56,7 +74,13 @@ def model_region(data_container, vcf_path, fasta_path, kmer_size, region):
     vcf = VCF(vcf_path)
     start_idx_offset = int(kmer_size / 2 + 1)
     kmer_mid_idx = int(start_idx_offset - 1)
-    sequence = fasta.get_seq(region[0], region[1], region[2]).seq.upper()
+    if region.strand is not None:
+        if region.strand == '-':
+            sequence = fasta.get_seq(region[0], region[1], region[2]).complement.seq.upper()
+        else:
+            sequence = fasta.get_seq(region[0], region[1], region[2]).seq.upper()
+    else:
+        sequence = fasta.get_seq(region[0], region[1], region[2]).seq.upper()
     region_ref_counts = ek.kmer_search(sequence, kmer_size)  # nprocs=1 due to short region
     r_string = str(region[0]) + ':' + str(region[1]) + '-' + str(region[2])
     transitions = defaultdict(lambda: array.array('L', [0, 0, 0, 0]))
@@ -70,7 +94,7 @@ def model_region(data_container, vcf_path, fasta_path, kmer_size, region):
             adj_seq = fasta[str(new_var.CHROM)][(new_var.POS - start_idx_offset):(new_var.POS + kmer_mid_idx)].seq
             if str(adj_seq[kmer_mid_idx]).upper() != str(variant.REF).upper():
                 print('WARNING: Reference mismatch\tFasta REF: %s\tVCF REF: %s' % (adj_seq[kmer_mid_idx], variant.REF),
-                      file=sys.stderr)
+                      file=sys.stderr, flush=True)
             if ek.complete_sequence(adj_seq):
                 transitions[adj_seq.upper()][nuc_idx[new_var.ALT[0]]] += 1
     temp = data_container.get()
@@ -82,7 +106,7 @@ def model_region(data_container, vcf_path, fasta_path, kmer_size, region):
 
 
 def train_kmer_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=None, invert_selection=True, clean_bed=False,
-                     header=False):
+                     header=False, strand_col=None, bed_names_col=None):
     """
     Builds the counts tables required for the k-mer model. Returned as 2 dictionaries.
     @param bed_path:            path to bed file
@@ -98,7 +122,7 @@ def train_kmer_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=None, inv
     manager = mp.Manager()
     # set up so master data count stays in shared memory
     dc = manager.Value(DataContainer, DataContainer())
-    regions = get_bed_regions(bed_path, invert_selection=invert_selection, header=header, clean_bed=clean_bed)
+    regions = get_bed_regions(bed_path, invert_selection=invert_selection, header=header, clean_bed=clean_bed, strand_col=strand_col, bed_names_col=bed_names_col)
     # Bundle arguments to pass to 'model_region' function
     arguments = [(dc, vcf_path, fasta_path, kmer_size, region.flist) for region
                  in regions]

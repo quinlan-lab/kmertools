@@ -125,20 +125,54 @@ class Kmer:
 
 
 class GRegion:
-    def __init__(self, chrom, start, stop):
-        # self.region = [chrom, start, stop]
-        self.chrom = chrom
-        try:
-            self.start = int(start)
-            self.stop = int(stop)
-            self.flist = (self.chrom, self.start, self.stop)
-        except ValueError:
-            raise ValueError('Start and Stop positions must be integers. Read %s as \'start\' and %s as \'stop\'' % (
-                str(start), str(stop)))
+    def __init__(self, *args, **kwargs):
+        if len(args) == 3:
+            self.addlfields = kwargs
+            self.chrom = args[0]
+            try:
+                self.start = int(args[1])
+                self.stop = int(args[2])
+                self.flist = (self.chrom, self.start, self.stop)
+            except ValueError:
+                raise ValueError(
+                    'Start and Stop positions must be integers. Read %s as \'start\' and %s as \'stop\'' % (
+                        str(args[1]), str(args[2])))
+            if 'strand' in kwargs:
+                self.strand = kwargs['strand']
+            else:
+                self.strand = None
+            if 'name' in kwargs:
+                self.name = kwargs['name']
+            else:
+                self.name = None
+        else:
+            raise ValueError(
+                'GRegion requires 3 arguments: chrom, start, and stop. All other values must be passed as keywords.')
+
+    # def __init__(self, chrom, start, stop):
+    #     # self.region = [chrom, start, stop]
+    #     self.chrom = chrom
+    #     try:
+    #         self.start = int(start)
+    #         self.stop = int(stop)
+    #         self.flist = (self.chrom, self.start, self.stop)
+    #     except ValueError:
+    #         raise ValueError('Start and Stop positions must be integers. Read %s as \'start\' and %s as \'stop\'' % (
+    #             str(start), str(stop)))
 
     # def add(self, chrom, start, stop):
     #     if chrom in self.regions.keys():
     #         self.regions[chrom][1] = stop
+    def printstr(self, delim='\t', newline=False):
+        basestr = str(self.chrom) + delim + str(self.start) + delim + str(self.stop) + delim
+        for i, v in enumerate(self.addlfields.values()):
+            basestr += str(v)
+            if i < (len(self.addlfields.values()) - 1):
+                basestr += delim
+        if newline:
+            basestr += '\n'
+        return basestr
+
     def is_complete(self):
         if None in [self.chrom, self.start, self.stop]:
             return False
@@ -278,7 +312,7 @@ class KmerWindow:
 class DataContainer:
     def __init__(self):
         self.ref_count = Counter()
-        #self.transitions = defaultdict(lambda: array.array('L', [0, 0, 0, 0]))
+        # self.transitions = defaultdict(lambda: array.array('L', [0, 0, 0, 0]))
         self.transitions = defaultdict(Counter)
         self.idx_nuc = list('ACGT')
 
