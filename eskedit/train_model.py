@@ -76,13 +76,13 @@ def model_region(data_container, vcf_path, fasta_path, kmer_size, region):
     kmer_mid_idx = int(start_idx_offset - 1)
     if region.strand is not None:
         if ek.is_dash(region.strand):
-            sequence = fasta.get_seq(region[0], region[1], region[2]).complement.seq.upper()
+            sequence = fasta.get_seq(region.chrom, region.start, region.stop).complement.seq.upper()
         else:
-            sequence = fasta.get_seq(region[0], region[1], region[2]).seq.upper()
+            sequence = fasta.get_seq(region.chrom, region.start, region.stop).seq.upper()
     else:
-        sequence = fasta.get_seq(region[0], region[1], region[2]).seq.upper()
+        sequence = fasta.get_seq(region.chrom, region.start, region.stop).seq.upper()
     region_ref_counts = ek.kmer_search(sequence, kmer_size)  # nprocs=1 due to short region
-    r_string = str(region[0]) + ':' + str(region[1]) + '-' + str(region[2])
+    r_string = str(region.chrom) + ':' + str(region.start) + '-' + str(region.stop)
     transitions = defaultdict(lambda: array.array('L', [0, 0, 0, 0]))
     # Define indices for nucleotides
     nuc_idx = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
@@ -126,7 +126,7 @@ def train_kmer_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=None, inv
     dc = manager.Value(DataContainer, DataContainer())
     regions = get_bed_regions(bed_path, invert_selection=invert_selection, header=header, clean_bed=clean_bed, strand_col=strand_col, bed_names_col=bed_names_col)
     # Bundle arguments to pass to 'model_region' function
-    arguments = [(dc, vcf_path, fasta_path, kmer_size, region.flist) for region
+    arguments = [(dc, vcf_path, fasta_path, kmer_size, region) for region
                  in regions]
     pool = mp.Pool(nprocs)
     # Distribute workload

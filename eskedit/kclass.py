@@ -194,7 +194,7 @@ class GRegion:
         return str(self)
 
     def __hash__(self):
-        return hash(str(self.chrom) + str(self.start) + str(self.stop))
+        return hash(self.printstr())
 
     def __eq__(self, other):
         return str(other) == str(self)
