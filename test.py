@@ -27,8 +27,14 @@ def test_train_kmer_model(arguments):
         fastapath = arguments[3]
         numprocs = int(arguments[4])
         invert_bed_selection = bool(arguments[5])
-        strand = int(arguments[6])
-        bednames = int(arguments[7])
+        try:
+            strand = int(arguments[6])
+        except TypeError:
+            strand = None
+        try:
+            bednames = int(arguments[7])
+        except TypeError:
+            bednames = None
     elif len(arguments) == 1:
         kmer_size = 3
         # big bed
@@ -80,8 +86,14 @@ def test_check_bed_regions_for_expected_mutations(arguments):
         fastapath = arguments[3]
         countspath = arguments[4]
         numprocs = int(arguments[5])
-        strand = int(arguments[6])
-        bednames = int(arguments[7])
+        try:
+            strand = int(arguments[6])
+        except TypeError:
+            strand = None
+        try:
+            bednames = int(arguments[7])
+        except TypeError:
+            bednames = None
     else:
         print("""Please enter arguments in this order:
             1. kmer size
