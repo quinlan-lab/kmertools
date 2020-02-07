@@ -88,7 +88,7 @@ def model_region(data_container, vcf_path, fasta_path, kmer_size, region):
     nuc_idx = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
     idx_nuc = list('ACGT')
     for variant in vcf(r_string):
-        if ek.is_quality_singleton(variant):
+        if ek.is_singleton_snv(variant):
             new_var = Variant(variant=variant, fields=['vep'])
             # take 7mer around variant. pyfaidx excludes start index and includes end index
             adj_seq = fasta[str(new_var.CHROM)][(new_var.POS - start_idx_offset):(new_var.POS + kmer_mid_idx)].seq

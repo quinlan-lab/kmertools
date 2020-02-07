@@ -90,13 +90,12 @@ def get_complementary_sequence(sequence):
     return "".join(comp_seq)
 
 
-def is_quality_variant(var_to_test):
+def is_quality_snv(var_to_test):
     """
     high quality variants will have FILTER == None
     AND we are ignoring insertions and deltions here
     """
-    return var_to_test.FILTER is None and len(var_to_test.ALT) == 1 \
-           and len(var_to_test.REF) == 1 and len(var_to_test.ALT[0]) == 1
+    return var_to_test.FILTER is None and var_to_test.INFO.get('variant_type') == 'snv'
 
 
 def is_quality_nonsingleton(var_to_test):
@@ -111,12 +110,18 @@ def is_quality_nonsingleton(var_to_test):
 
 def is_quality_singleton(var_to_test):
     """
+    NOTE: This method is now deprecated, please use "is_singleton_snv"
     high quality variants will have FILTER == None
     Additionally, variants shoud be singletons ('AC' == 1) meaning that it is a unique observation
     AND we are ignoring insertions and deltions here
     """
     return var_to_test.FILTER is None and var_to_test.INFO.get('AC') == 1 and len(var_to_test.ALT) == 1 \
            and len(var_to_test.REF) == 1 and len(var_to_test.ALT[0]) == 1
+
+
+def is_singleton_snv(var_to_test):
+    return var_to_test.FILTER is None and var_to_test.INFO.get('AC') == 1 and var_to_test.INFO.get(
+        'variant_type') == 'snv'
 
 
 def complete_sequence(seq):
@@ -201,7 +206,7 @@ def process_region(region, vcf_path, ref_fasta, kmer_size, singletons, nsingleto
             start = time.time()
             print('Processing ' + str(section))
             for variant in vcf(str(section)):
-                if is_quality_singleton(variant):
+                if is_singleton_snv(variant):
                     new_var = Variant(variant=variant, fields=['vep'])
                     s_positions[new_var.INDEX] = new_var
                     # take 7mer around variant. pyfaidx excludes start index and includes end index
@@ -239,7 +244,7 @@ def process_region(region, vcf_path, ref_fasta, kmer_size, singletons, nsingleto
             start = time.time()
             print('Processing ' + str(section))
             for variant in vcf(str(section)):
-                if is_quality_singleton(variant):
+                if is_singleton_snv(variant):
                     new_var = Variant(variant=variant, fields=['vep'])
                     s_positions[new_var.INDEX] = new_var
                     # take 7mer around variant. pyfaidx excludes start index and includes end index
@@ -396,7 +401,7 @@ def get_counts_dict(kmer_size, alt_path=None):
 def count_singletons(vcf_region):
     count = 0
     for v in vcf_region:
-        if is_quality_singleton(v):
+        if is_singleton_snv(v):
             count += 1
     return count
 

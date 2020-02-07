@@ -64,11 +64,12 @@ def test_train_kmer_model(arguments):
 def test_check_bed_regions_for_expected_mutations(arguments):
     if len(arguments) == 1:
         kmer_size = 7
-        #bedpath = '/Users/simonelongo/too_big_for_icloud/merged_exons_grch38.bed'
-        bedpath = '/Users/simonelongo/Downloads/3primeUTR.refseq.grch38.hg38.bed'
+        # bedpath = '/Users/simonelongo/too_big_for_icloud/merged_exons_grch38.bed'
+        # bedpath = '/Users/simonelongo/Downloads/3primeUTR.refseq.grch38.hg38.bed'
+        bedpath = '/Users/simonelongo/Downloads/hg38-tRNAs/hg38-tRNAs.bed'
         vcfpath = '/Users/simonelongo/too_big_for_icloud/gnomAD_v3/gnomad.genomes.r3.0.sites.vcf.bgz'
         fastapath = '/Users/simonelongo/too_big_for_icloud/ref_genome/hg38/hg38.fa'
-        numprocs = 1
+        numprocs = 6
         countspath = '/Users/simonelongo/Documents/QuinlanLabFiles/kmertools/input_data/counts_data/7mer_relative_freq_noncoding.csv'
         strand = 5
         bednames = 3
