@@ -7,7 +7,7 @@ from cyvcf2 import VCF
 import re
 import pandas as pd
 from pkg_resources import resource_filename
-from pyfaidx import Fasta
+from pyfaidx import Fasta, FetchError
 from eskedit.kclass import Variant, Kmer, KmerWindow, GRegion
 from eskedit.ksplit import split_seq, get_split_vcf_regions, get_split_chrom_vcf
 
@@ -415,7 +415,10 @@ def query_region(vcf_path, fasta, chrom, kmer_size, bins=100, counts_path=None):
     print('region\tactual\texpected\tratio')
     expected, actual = [], []
     for r in regions:
-        exp = window.calculate_expected(str(fasta.get_seq(r.chrom, r.start, r.stop)))
+        try:
+            exp = window.calculate_expected(str(fasta.get_seq(r.chrom, r.start, r.stop)))
+        except (KeyError, FetchError):
+            exp = 0
         act = count_singletons(vcf(str(r)))
         expected.append(exp)
         actual.append(act)
@@ -432,18 +435,22 @@ def query_bed_region(region, vcf_path, fasta, kmer_size, bins, counts_path):
     vcf = VCF(vcf_path)
     fasta = Fasta(fasta)
     window = KmerWindow(kmer_size, counts_path=counts_path)
-    expected, actual = [], []
-    if region.strand is not None:
-        if is_dash(region.strand):
-            sequence = fasta.get_seq(region.chrom, region.start, region.stop).complement.seq.upper()
+    # expected, actual = [], []
+    try:
+        if region.strand is not None:
+            if is_dash(region.strand):
+                sequence = fasta.get_seq(region.chrom, region.start, region.stop).complement.seq.upper()
+            else:
+                sequence = fasta.get_seq(region.chrom, region.start, region.stop).seq.upper()
         else:
             sequence = fasta.get_seq(region.chrom, region.start, region.stop).seq.upper()
-    else:
-        sequence = fasta.get_seq(region.chrom, region.start, region.stop).seq.upper()
-    exp = window.calculate_expected(sequence)  # this does account for strandedness
-    act = count_singletons(vcf(str(region)))  # does not account for strandedness here
-    expected.append(exp)
-    actual.append(act)
+        exp = window.calculate_expected(sequence)  # this does account for strandedness
+        act = count_singletons(vcf(str(region)))  # does not account for strandedness here
+        # expected.append(exp)
+        # actual.append(act)
+    except (KeyError, FetchError):
+        exp = 0
+        act = 0
     if exp == 0:
         ratio = 0
     else:
