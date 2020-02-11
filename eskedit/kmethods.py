@@ -398,12 +398,15 @@ def get_counts_dict(kmer_size, alt_path=None):
     return dict(zip(df.index, df.frequency))
 
 
-def count_singletons(vcf_region):
+def count_regional_variants(vcf_region):
+    singletons = 0
     count = 0
     for v in vcf_region:
         if is_singleton_snv(v):
+            singletons += 1
+        if is_quality_snv(v):
             count += 1
-    return count
+    return count, singletons
 
 
 def query_region(vcf_path, fasta, chrom, kmer_size, bins=100, counts_path=None):
@@ -419,14 +422,14 @@ def query_region(vcf_path, fasta, chrom, kmer_size, bins=100, counts_path=None):
             exp = window.calculate_expected(str(fasta.get_seq(r.chrom, r.start, r.stop)))
         except (KeyError, FetchError):
             exp = 0
-        act = count_singletons(vcf(str(r)))
+        all_vars, singletons = count_regional_variants(vcf(str(r)))
         expected.append(exp)
-        actual.append(act)
+        actual.append(singletons)
         if exp == 0:
             ratio = 0
         else:
-            ratio = act / exp
-        print("%s\t%d\t%f\t%f" % (str(r), act, exp, ratio))
+            ratio = singletons / exp
+        print("%s\t%d\t%f\t%f" % (str(r), all_vars, exp, ratio))
 
 
 def query_bed_region(region, vcf_path, fasta, kmer_size, bins, counts_path):
@@ -445,19 +448,20 @@ def query_bed_region(region, vcf_path, fasta, kmer_size, bins, counts_path):
         else:
             sequence = fasta.get_seq(region.chrom, region.start, region.stop).seq.upper()
         exp = window.calculate_expected(sequence)  # this does account for strandedness
-        act = count_singletons(vcf(str(region)))  # does not account for strandedness here
+        all_vars, singletons = count_regional_variants(vcf(str(region)))  # does not account for strandedness here
         # expected.append(exp)
         # actual.append(act)
     except (KeyError, FetchError):
         exp = 0
-        act = 0
+        singletons = 0
+        all_vars = 0
     if exp == 0:
         ratio = 0
     else:
-        ratio = act / exp
-    print('{0:<30} {1:>10} {2:>20} {3:>20}'.format((region.printstr(delim=' ')), str(act), str(exp), str(ratio)))
+        ratio = singletons / exp
+    print('{0:<30} {1:>10} {2:>20} {3:>20}'.format((region.printstr(delim=' ')), str(all_vars), str(exp), str(ratio)))
     # return "%s\t%s\t%s\t%d\t%f\t%f\n" % (str(region.chrom), str(region.start), str(region.stop), act, exp, ratio)
-    return "%s\t%d\t%f\t%f\n" % (region.printstr(), act, exp, ratio)
+    return "%s\t%d\t%f\t%f\n" % (region.printstr(), all_vars, exp, ratio)
 
 
 def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, bins=20, counts_path=None, outfile=None,
