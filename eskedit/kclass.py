@@ -138,11 +138,11 @@ class GRegion:
                     'Start and Stop positions must be integers. Read %s as \'start\' and %s as \'stop\'' % (
                         str(args[1]), str(args[2])))
             if 'strand' in kwargs:
-                self.strand = kwargs['strand']
+                self.strand = kwargs['strand'].strip()
             else:
                 self.strand = None
             if 'name' in kwargs:
-                self.name = kwargs['name']
+                self.name = kwargs['name'].strip()
             else:
                 self.name = None
         else:
