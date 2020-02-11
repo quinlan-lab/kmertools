@@ -6,7 +6,7 @@ from signal import signal, SIGINT
 
 
 def sigint_handler(signal_received, frame):
-    print('SIGINT or CTRL-C detected. Exiting gracefully')
+    #print('SIGINT or CTRL-C detected. Exiting gracefully')
     exit(0)
 
 
