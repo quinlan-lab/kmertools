@@ -166,7 +166,7 @@ class GRegion:
     def printstr(self, delim='\t', newline=False):
         basestr = str(self.chrom) + delim + str(self.start) + delim + str(self.stop) + delim
         for i, v in enumerate(self.addlfields.values()):
-            basestr += str(v)
+            basestr += str(v).strip()
             if i < (len(self.addlfields.values()) - 1):
                 basestr += delim
         if newline:

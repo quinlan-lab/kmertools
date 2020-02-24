@@ -447,7 +447,7 @@ def query_region(vcf_path, fasta, chrom, kmer_size, bins=100, counts_path=None):
         print("%s\t%d\t%f\t%f" % (str(r), all_vars, exp, ratio))
 
 
-def query_bed_region(region, vcf_path, fasta, kmer_size, bins, counts_path):
+def query_bed_region(region, vcf_path, fasta, kmer_size, counts_path):
     # TODO: Add binning somehow (either keep equal size or equal number of bins
     start = time.time()
     vcf = VCF(vcf_path)
@@ -479,9 +479,15 @@ def query_bed_region(region, vcf_path, fasta, kmer_size, bins, counts_path):
     return "%s\t%d\t%f\t%f\n" % (region.printstr(), all_vars, exp, ratio)
 
 
-def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, bins=20, counts_path=None, outfile=None,
+def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, counts_path=None, outfile=None,
                       strand_col=None, bed_names_col=None):
     # TODO: implement where bed regions are read and then analyzed for expected v actual
+    try:
+        kmer_size = int(kmer_size)
+        nprocs = int(nprocs)
+    except ValueError:
+        print('ERROR: kmer_size and nprocs must be integers')
+        exit(1)
     additional_fields = defaultdict(int)
     if strand_col is not None:
         try:
@@ -508,7 +514,7 @@ def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, bins=
                 kwargs[k] = fields[v]
             regions.append(GRegion(*[fields[0], fields[1], fields[2]], **kwargs))
     print('{0:<30} {1:>10} {2:>20} {3:>20}'.format('Region', 'Observed', 'Expected', 'Obs/Exp'))
-    arguments = [(region, vcf_path, fasta_path, kmer_size, bins, counts_path) for region in regions]
+    arguments = [(region, vcf_path, fasta_path, kmer_size, counts_path) for region in regions]
     pool = mp.Pool(nprocs)
     results = pool.starmap_async(query_bed_region, arguments)
     pool.close()

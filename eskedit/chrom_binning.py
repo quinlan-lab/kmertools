@@ -74,6 +74,13 @@ def process_chrom_bin(region, kmer_size, vcf_path, fasta_path):
 
 def chrom_bin_mutability(vcfpath, fastapath, kmer_size, nbins, chroms=None, nprocs=1):
     # prepare bins for each chromosome
+    try:
+        kmer_size = int(kmer_size)
+        nbins = int(nbins)
+        nprocs = int(nprocs)
+    except ValueError:
+        print("ERROR: kmer_size, nbins, and nprocs must be integers.")
+        exit(1)
     default_idx = 'A' * kmer_size
     if chroms is None:
         chromdict = ek.get_autosome_lengths_grch38()  # dictionary which maps chrom name to length

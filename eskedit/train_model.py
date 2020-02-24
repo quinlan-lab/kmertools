@@ -113,7 +113,7 @@ def model_region(data_container, vcf_path, fasta_path, kmer_size, region):
     return
 
 
-def train_kmer_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=None, invert_selection=True, clean_bed=False,
+def train_kmer_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=1, invert_selection=True, clean_bed=False,
                      header=False, strand_col=None, bed_names_col=None):
     """
     Builds the counts tables required for the k-mer model. Returned as 2 dictionaries.
@@ -129,6 +129,15 @@ def train_kmer_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=None, inv
     @param header:              False (default) if the bed file does not have a header
     @return:
     """
+    try:
+        nprocs = int(nprocs)
+        if strand_col is not None:
+            strand_col = int(strand_col)
+        if bed_names_col is not None:
+            bed_names_col = int(bed_names_col)
+    except ValueError:
+        print('ERROR: nprocs and column indices must be integers')
+        exit(1)
     manager = mp.Manager()
     # set up so master data count stays in shared memory
     dc = manager.Value(DataContainer, DataContainer())
