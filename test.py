@@ -138,9 +138,9 @@ def test_check_bed_regions_for_expected_mutations(arguments, test=None):
 
 def test_chrom_bin_mutability(arguments, test=None):  # vcfpath, fastapath, kmer_size, nbins, chroms=None, numprocs=1):
     if test is None:
-        mut_table = ek.chrom_bin_mutability(arguments.vcfpath, arguments.fasta_path, arguments.kmer_size,
+        mut_table = ek.chrom_bin_mutability(arguments.vcf_path, arguments.fasta_path, arguments.kmer_size,
                                             arguments.nbins,
-                                            chroms=arguments.chrom_list, nprocs=arguments.numprocs)
+                                            chroms=arguments.chrom_list, nprocs=arguments.nprocs)
         mut_table.to_csv('chrom_%dbins_%dmers.csv' % (arguments.nbins, arguments.kmer_size))
     else:
         vcfpath = '/Users/simonelongo/too_big_for_icloud/gnomAD_v3/gnomad.genomes.r3.0.sites.vcf.bgz'
