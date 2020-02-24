@@ -134,11 +134,13 @@ def complete_sequence(seq):
     return set(seq.upper()).issubset(allowed)
 
 
-def kmer_search(sequence, kmer_length):
+def kmer_search(sequence, kmer_length, count_gc=False, count_n=False):
     """
     Driver for get_kmer_count
     :param sequence:
     :param kmer_length:
+    :param count_gc: Return GC content (default = False)
+    :param count_n: Reurn count number of unreferenced nucleotides (default = False)
     :return:
     """
     counts = Counter()
@@ -146,7 +148,20 @@ def kmer_search(sequence, kmer_length):
         next_seq = sequence[i:(i + kmer_length)]
         if not ('N' in next_seq or 'n' in next_seq):
             counts[next_seq.upper()] += 1
-    return counts
+    if count_gc and count_n:
+        nucleotides = Counter(sequence)
+        gc_content = (nucleotides['G'] + nucleotides['C']) / max((nucleotides['A'] + nucleotides['T'] + nucleotides['G'] + nucleotides['C']), 1)
+        return counts, gc_content, nucleotides['N']
+    elif count_gc and not count_n:
+        nucleotides = Counter(sequence)
+        gc_content = (nucleotides['G'] + nucleotides['C']) / max((
+                    nucleotides['A'] + nucleotides['T'] + nucleotides['G'] + nucleotides['C']), 1)
+        return counts, gc_content
+    elif not count_gc and count_n:
+        nucleotides = Counter(sequence)
+        return counts, nucleotides['N']
+    else:
+        return counts
 
 
 def get_vcf_info_fields(vcf_path):
