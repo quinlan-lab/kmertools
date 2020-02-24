@@ -164,11 +164,13 @@ if __name__ == "__main__":
         'binchrom': test_chrom_bin_mutability,
     }
 
-    parser = argparse.ArgumentParser("Execute functions with subcommands:\n$ python3 test.py <COMMAND> -[ARGUMENTS]\n\n$ python3 test.py query -k 3 -b bedfile.bed -v variants.vcf -f hg38.fa -N 32\n\n")
+    parser = argparse.ArgumentParser(prog='ESKeDiT',
+                                     usage="Execute functions with subcommands:\n$ python3 test.py <COMMAND> -[ARGUMENTS]\n\n$ python3 test.py query -k 3 -b bedfile.bed -v variants.vcf -f hg38.fa -N 32\n\n")
     parser.add_argument('command', choices=FUNCTION_MAP.keys())
     # parser.add_argument('--query', action='store_true', help='Query regions specified in bedfile for an expected number of mutations based on provided counts data.')
     # parser.add_argument('--train', action='store_true', help='Build a counts table based on a k-mer model')
     # parser.add_argument('--loctest', action='store_true')
+    parser.add_argument('--version', action='version', version='%s %s' % ('ESKeDiT', ek.VERSION))
     parser.add_argument('--test', action='store_true', dest='loctest', help='Run local test. NOTE: THIS WILL NOT WORK!')
     parser.add_argument('--kmer_size', '-k', action='store', dest='kmer_size', help='Length of k-mer motif')
     parser.add_argument('--bedpath', '-b', action='store', dest='bed_path',

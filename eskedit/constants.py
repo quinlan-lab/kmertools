@@ -1,6 +1,6 @@
 from pkg_resources import resource_filename
 
-VERSION = '1.3.0'
+VERSION = '1.3.1'
 
 
 def get_autosome_names_grch38():
