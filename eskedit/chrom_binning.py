@@ -65,10 +65,10 @@ def process_chrom_bin(region, kmer_size, vcf_path, fasta_path):
         kmer_freq['freq'] = kmer_freq.tot / kmer_freq.counts
         kmer_freq.loc['GC_content', 'freq'] = gc_content
         kmer_freq.loc['N_count', 'freq'] = n_count
-        print('Finished region %s in %s' % (str(region), str(time.time() - start)))
+        print('Finished region %s in %s' % (str(region), str(time.time() - start)), flush=True)
         return region, kmer_freq['freq'].to_dict()
     else:
-        print('Finished region %s in %s' % (str(region), str(time.time() - start)))
+        print('Finished region %s in %s' % (str(region), str(time.time() - start)), flush=True)
         return region, None
 
 
