@@ -120,6 +120,12 @@ def model_region_nonsingletons(data_container, vcf_path, fasta_path, kmer_size, 
         except ValueError:
             AC_cutoff = None
             print('AC cutoff must be a positive integer. Ignoring user value and using SNVs with any AC.')
+    try:
+        kmer_size = int(kmer_size)
+        if kmer_size < 1: raise ValueError
+    except ValueError:
+        print('kmer_size must be a positive integer. Please check arguments.', file=sys.stderr)
+        exit(1)
     start = time.time()
     fasta = Fasta(fasta_path)
     vcf = VCF(vcf_path)
