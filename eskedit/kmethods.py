@@ -1,10 +1,12 @@
 import random
 import multiprocessing as mp
+import sys
 import time
 from collections import Counter, defaultdict
 import numpy as np
 from cyvcf2 import VCF
 import re
+import math
 import pandas as pd
 from pkg_resources import resource_filename
 from pyfaidx import Fasta, FetchError
@@ -90,11 +92,17 @@ def get_complementary_sequence(sequence):
     return "".join(comp_seq)
 
 
-def is_quality_snv(var_to_test):
+def is_quality_snv(var_to_test, AC_cutoff=None):
     """
     high quality variants will have FILTER == None
     AND we are ignoring insertions and deltions here
     """
+    if AC_cutoff is not None:
+        try:
+            AC_cutoff = int(AC_cutoff)
+            return var_to_test.FILTER is None and var_to_test.INFO.get('variant_type') == 'snv' and var_to_test.INFO.get('AC') <= AC_cutoff
+        except ValueError:
+            AC_cutoff = None
     return var_to_test.FILTER is None and var_to_test.INFO.get('variant_type') == 'snv'
 
 
@@ -150,12 +158,13 @@ def kmer_search(sequence, kmer_length, count_gc=False, count_n=False):
             counts[next_seq.upper()] += 1
     if count_gc and count_n:
         nucleotides = Counter(sequence)
-        gc_content = (nucleotides['G'] + nucleotides['C']) / max((nucleotides['A'] + nucleotides['T'] + nucleotides['G'] + nucleotides['C']), 1)
+        gc_content = (nucleotides['G'] + nucleotides['C']) / max(
+            (nucleotides['A'] + nucleotides['T'] + nucleotides['G'] + nucleotides['C']), 1)
         return counts, gc_content, nucleotides['N']
     elif count_gc and not count_n:
         nucleotides = Counter(sequence)
         gc_content = (nucleotides['G'] + nucleotides['C']) / max((
-                    nucleotides['A'] + nucleotides['T'] + nucleotides['G'] + nucleotides['C']), 1)
+                nucleotides['A'] + nucleotides['T'] + nucleotides['G'] + nucleotides['C']), 1)
         return counts, gc_content
     elif not count_gc and count_n:
         nucleotides = Counter(sequence)
@@ -424,6 +433,16 @@ def count_regional_variants(vcf_region):
     return count, singletons
 
 
+def count_regional_AF(vcf_region):
+    total = 0
+    calc = 0
+    for v in vcf_region:
+        if is_quality_snv(v):
+            total += v.INFO.get('AF')
+            calc += v.INFO.get('AC') / v.INFO.get('AN')
+    return calc, total
+
+
 def query_region(vcf_path, fasta, chrom, kmer_size, bins=100, counts_path=None):
     # TODO: Add window size!!!
     vcf = VCF(vcf_path)
@@ -447,7 +466,16 @@ def query_region(vcf_path, fasta, chrom, kmer_size, bins=100, counts_path=None):
         print("%s\t%d\t%f\t%f" % (str(r), all_vars, exp, ratio))
 
 
-def query_bed_region(region, vcf_path, fasta, kmer_size, counts_path):
+def query_bed_region(region, vcf_path, fasta, kmer_size, counts_path, count_frequency=True):
+    """
+    @param region:
+    @param vcf_path:
+    @param fasta:
+    @param kmer_size:
+    @param counts_path:         This field is critical for count_freuency to work. Needs table of expected AF
+    @param count_frequency:
+    @return:
+    """
     # TODO: Add binning somehow (either keep equal size or equal number of bins
     start = time.time()
     vcf = VCF(vcf_path)
@@ -463,20 +491,30 @@ def query_bed_region(region, vcf_path, fasta, kmer_size, counts_path):
         else:
             sequence = fasta.get_seq(region.chrom, region.start, region.stop).seq.upper()
         exp = window.calculate_expected(sequence)  # this does account for strandedness
-        all_vars, singletons = count_regional_variants(vcf(str(region)))  # does not account for strandedness here
-        # expected.append(exp)
-        # actual.append(act)
+        if count_frequency:
+            calc, total = count_regional_AF(vcf(str(region)))
+            if not math.isclose(calc, total, rel_tol=1e-05):
+                print('WARNING: Calculated AF and VCF AF are different!     Calculated AF: %f     VCF AF: %f' % (calc, total), file=sys.stderr)
+            observed_variants = calc
+            # Setting this so output shows difference between calculated and listed AF and won't throw an error
+            all_vars = total
+            pass
+        else:
+            # does not account for strandedness here
+            all_vars, observed_variants = count_regional_variants(vcf(str(region)))
     except (KeyError, FetchError):
         exp = 0
-        singletons = 0
+        observed_variants = 0
         all_vars = 0
     if exp == 0:
         ratio = 0
     else:
-        ratio = singletons / exp
-    print('{0:<30} {1:>10} {2:>20} {3:>20}'.format((region.printstr(delim=' ')), str(all_vars), str(exp), str(ratio)))
+        ratio = observed_variants / exp
+    print('{0:<30} {1:>10} {2:>20} {3:>20} {4:>20}'.format((region.printstr(delim=' ')),
+                                                           str(all_vars - observed_variants), str(observed_variants),
+                                                           str(exp), str(ratio)))
     # return "%s\t%s\t%s\t%d\t%f\t%f\n" % (str(region.chrom), str(region.start), str(region.stop), act, exp, ratio)
-    return "%s\t%d\t%f\t%f\n" % (region.printstr(), all_vars, exp, ratio)
+    return "%s\t%d\t%d\t%f\t%f\n" % (region.printstr(), all_vars - observed_variants, observed_variants, exp, ratio)
 
 
 def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, counts_path=None, outfile=None,

@@ -72,7 +72,7 @@ def get_bed_regions(bed_path, invert_selection=True, header=False, clean_bed=Fal
         return regions.get_regions()
 
 
-def model_region(data_container, vcf_path, fasta_path, kmer_size, region):
+def model_region_singletons(data_container, vcf_path, fasta_path, kmer_size, region):
     start = time.time()
     fasta = Fasta(fasta_path)
     vcf = VCF(vcf_path)
@@ -113,10 +113,69 @@ def model_region(data_container, vcf_path, fasta_path, kmer_size, region):
     return
 
 
-def train_kmer_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=1, invert_selection=True, clean_bed=False,
-                     header=False, strand_col=None, bed_names_col=None):
+def model_region_nonsingletons(data_container, vcf_path, fasta_path, kmer_size, region, AC_cutoff):
+    if AC_cutoff is not None:
+        try:
+            AC_cutoff = int(AC_cutoff)
+        except ValueError:
+            AC_cutoff = None
+            print('AC cutoff must be a positive integer. Ignoring user value and using SNVs with any AC.')
+    start = time.time()
+    fasta = Fasta(fasta_path)
+    vcf = VCF(vcf_path)
+    start_idx_offset = int(kmer_size / 2 + 1)
+    kmer_mid_idx = int(start_idx_offset - 1)
+    try:
+        if region.strand is not None:
+            if ek.is_dash(region.strand):
+                sequence = fasta.get_seq(region.chrom, region.start, region.stop).complement.seq.upper()
+            else:
+                sequence = fasta.get_seq(region.chrom, region.start, region.stop).seq.upper()
+        else:
+            sequence = fasta.get_seq(region.chrom, region.start, region.stop).seq.upper()
+    except (KeyError, FetchError):
+        print('Region %s not found in fasta, continuing...' % str(region), file=sys.stderr)
+        return
+    region_ref_counts = ek.kmer_search(sequence, kmer_size)  # nprocs=1 due to short region
+    r_string = str(region.chrom) + ':' + str(region.start) + '-' + str(region.stop)
+    transitions = defaultdict(lambda: array.array('d', [0, 0, 0, 0]))
+    # Define indices for nucleotides
+    nuc_idx = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
+    idx_nuc = list('ACGT')
+    for variant in vcf(r_string):
+        if ek.is_quality_snv(variant, AC_cutoff=AC_cutoff):
+            new_var = Variant(variant=variant)
+            adj_seq = fasta[str(new_var.CHROM)][(new_var.POS - start_idx_offset):(new_var.POS + kmer_mid_idx)].seq
+            if str(adj_seq[kmer_mid_idx]).upper() != str(variant.REF).upper():
+                print('WARNING: Reference mismatch\tFasta REF: %s\tVCF REF: %s' % (adj_seq[kmer_mid_idx], variant.REF),
+                      file=sys.stderr, flush=True)
+            if ek.complete_sequence(adj_seq):
+                transitions[adj_seq.upper()][nuc_idx[new_var.ALT[0]]] += new_var.wAF
+        # if ek.is_singleton_snv(variant):
+        #     new_var = Variant(variant=variant, fields=['vep'])
+        #     # take 7mer around variant. pyfaidx excludes start index and includes end index
+        #     adj_seq = fasta[str(new_var.CHROM)][(new_var.POS - start_idx_offset):(new_var.POS + kmer_mid_idx)].seq
+        #     if str(adj_seq[kmer_mid_idx]).upper() != str(variant.REF).upper():
+        #         print('WARNING: Reference mismatch\tFasta REF: %s\tVCF REF: %s' % (adj_seq[kmer_mid_idx], variant.REF), file=sys.stderr, flush=True)
+        #     if ek.complete_sequence(adj_seq):
+        #         transitions[adj_seq.upper()][nuc_idx[new_var.ALT[0]]] += 1
+    temp = data_container.get()
+    temp.add_count(region_ref_counts)
+    temp.add_transition(transitions)
+    data_container.set(temp)
+    print('Finished region %s in %s' % (str(region), str(time.time() - start)))
+    return
+
+
+def train_kmer_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=1, invert_selection=True,
+                     clean_bed=False, singletons=False, nonsingletons=False,
+                     header=False, strand_col=None, bed_names_col=None, AC_cutoff=None):
     """
     Builds the counts tables required for the k-mer model. Returned as 2 dictionaries.
+    @param AC_cutoff:           Specify to filter out variants above a given AC (AC > cutoff will be filtered)
+                                ** works only if keyword 'nonsingletons=True' **
+    @param nonsingletons:       Set true to train model on all SNVs
+    @param singletons:          Set true to train model based on singleton variants
     @param strand_col:          zero-based column index of strand information from bed file
     @param bed_names_col:       zero-based column index of name information from bed file
     @param bed_path:            path to bed file
@@ -144,15 +203,23 @@ def train_kmer_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=1, invert
     regions = get_bed_regions(bed_path, invert_selection=invert_selection, header=header, clean_bed=clean_bed,
                               strand_col=strand_col, bed_names_col=bed_names_col)
     # Bundle arguments to pass to 'model_region' function
-    arguments = [(dc, vcf_path, fasta_path, kmer_size, region) for region
-                 in regions]
+
     pool = mp.Pool(nprocs)
     # Distribute workload
-    pool.starmap(model_region, arguments)
-    pool.close()
-    pool.join()
-
-    return dc.value.get()  # master_ref_counts, transitions_list
+    results = defaultdict(tuple)
+    if singletons:
+        arguments = [(dc, vcf_path, fasta_path, kmer_size, region) for region in regions]
+        pool.starmap(model_region_singletons, arguments)
+        pool.close()
+        pool.join()
+        results['singletons'] = dc.value.get()
+    if nonsingletons:
+        arguments = [(dc, vcf_path, fasta_path, kmer_size, region, AC_cutoff) for region in regions]
+        pool.starmap(model_region_nonsingletons, arguments)
+        pool.close()
+        pool.join()
+        results['all_variants'] = dc.value.get()
+    return results  # master_ref_counts, transitions_list
 
 
 def generate_frequency_table(reference_counts, transition_counts, filepath=False, save_file=None):
@@ -163,6 +230,8 @@ def generate_frequency_table(reference_counts, transition_counts, filepath=False
         counts = pd.DataFrame.from_dict(reference_counts, orient='index').sort_index()
         transitions = pd.DataFrame.from_dict(transition_counts, orient='index').sort_index()
     freq_table = pd.DataFrame()
+    counts.fillna(0, inplace=True)
+    transitions.fillna(0, inplace=True)
     if counts.shape[0] != transitions.shape[0]:
         raise ValueError(
             'The reference counts (read %d rows) and transition counts (read %d rows) must have the same number of rows' % (

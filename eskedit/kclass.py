@@ -12,13 +12,11 @@ class Variant:
             self.CHROM = args[3]
         else:
             variant = kwargs.get('variant')
-            try:
-                self.qual = kwargs.get('qual')
-            except KeyError:
+            self.qual = kwargs.get('qual')
+            if self.qual is None:
                 self.qual = False
-            try:
-                fields = kwargs.get('fields')
-            except KeyError:
+            fields = kwargs.get('fields')
+            if fields is None:
                 fields = ['vep']
             self.REF = variant.REF
             self.ALT = variant.ALT
@@ -30,6 +28,8 @@ class Variant:
             for f in fields:
                 self.info[f] = str(variant.INFO.get(f))
             self.AC = variant.INFO.get('AC')
+            self.AN = variant.INFO.get('AN')
+            self.wAF = self.AC / self.AN
         self.INDEX = self.CHROM + ' ' + str(self.POS)
 
     def __str__(self):

@@ -3,6 +3,7 @@ import sys
 import pandas as pd
 import argparse
 from signal import signal, SIGINT
+import time
 
 
 def sigint_handler(signal_received, frame):
@@ -10,7 +11,7 @@ def sigint_handler(signal_received, frame):
     exit(0)
 
 
-def test_train_kmer_model(args, test=None):
+def test_train_kmer_model(arguments, test=None):
     # if len(arguments) == 5:
     #     kmer_size = int(arguments[0])
     #     bedpath = arguments[1]
@@ -60,14 +61,17 @@ def test_train_kmer_model(args, test=None):
     #     exit(1)
 
     if test is None:
-        result = ek.train_kmer_model(args.bed_path, args.vcf_path, args.fasta_path, args.kmer_size, nprocs=args.nprocs,
+        result = ek.train_kmer_model(arguments.bed_path, arguments.vcf_path, arguments.fasta_path, arguments.kmer_size,
+                                     nprocs=arguments.nprocs,
                                      clean_bed=True,
-                                     invert_selection=args.invert, strand_col=args.strand_col,
-                                     bed_names_col=args.bed_name_col)
-        outfile1 = 'regional_' + str(args.kmer_size) + 'mer_count.csv'
-        outfile2 = 'regional_transitions_' + str(args.kmer_size) + 'mer.csv'
-        pd.DataFrame.from_dict(result[0], orient='index').to_csv(outfile1)
-        pd.DataFrame.from_dict(result[1], orient='index', columns=list('ACGT')).to_csv(outfile2)
+                                     invert_selection=arguments.invert, strand_col=arguments.strand_col,
+                                     bed_names_col=arguments.bed_name_col, singletons=arguments.check_singletons,
+                                     nonsingletons=arguments.check_nonsingletons)
+        for k, v, in result.items():
+            outfile1 = 'regional_' + str(k) + '_' + str(arguments.kmer_size) + 'mer_count.csv'
+            outfile2 = 'regional_transitions_' + str(k) + '_' + str(arguments.kmer_size) + 'mer.csv'
+            pd.DataFrame.from_dict(v[0], orient='index').to_csv(outfile1)
+            pd.DataFrame.from_dict(v[1], orient='index', columns=list('ACGT')).to_csv(outfile2)
     else:  # Test mode
         kmer_size = 3
         # big bed
@@ -79,11 +83,12 @@ def test_train_kmer_model(args, test=None):
         numprocs = 1
         result = ek.train_kmer_model(bedpath, vcfpath, fastapath, kmer_size, nprocs=numprocs, clean_bed=True,
                                      invert_selection=False, strand_col=None,
-                                     bed_names_col=None)
-        outfile1 = 'TEST_regional_' + str(kmer_size) + 'mer_count.csv'
-        outfile2 = 'TEST_regional_transitions_' + str(kmer_size) + 'mer.csv'
-        pd.DataFrame.from_dict(result[0], orient='index').to_csv(outfile1)
-        pd.DataFrame.from_dict(result[1], orient='index', columns=list('ACGT')).to_csv(outfile2)
+                                     bed_names_col=None, singletons=False, nonsingletons=True)
+        for k, v in result.items():
+            outfile1 = 'TEST_regional_' + str(k) + '_' + str(kmer_size) + 'mer_count.csv'
+            outfile2 = 'TEST_regional_transitions_' + str(k) + '_' + str(kmer_size) + 'mer.csv'
+            pd.DataFrame.from_dict(v[0], orient='index').to_csv(outfile1)
+            pd.DataFrame.from_dict(v[1], orient='index', columns=list('ACGT')).to_csv(outfile2)
 
 
 def test_check_bed_regions_for_expected_mutations(arguments, test=None):
@@ -151,13 +156,13 @@ def test_chrom_bin_mutability(arguments, test=None):  # vcfpath, fastapath, kmer
         numprocs = 6
         mut_table = ek.chrom_bin_mutability(vcfpath, fastapath, kmer_size, nbins, chroms=chroms, nprocs=numprocs)
         mut_table.to_csv('TEST_chrom_%dbins_%dmers.csv' % (nbins, kmer_size))
-    pass
+    return
 
 
 if __name__ == "__main__":
     # register SIGINT handler
     signal(SIGINT, sigint_handler)
-
+    start = time.time()
     FUNCTION_MAP = {
         'query': test_check_bed_regions_for_expected_mutations,
         'train': test_train_kmer_model,
@@ -190,6 +195,8 @@ if __name__ == "__main__":
                         help='Enter (zero-based) integer value of column in bed file with strand information')
     parser.add_argument('--bed_names', action='store', dest='bed_name_col',
                         help='Enter (zero-based) integer value of column in bed file with region/gene name information')
+    parser.add_argument('--singletons', action='store_true', dest='check_singletons')
+    parser.add_argument('--notsingletons', action='store_true', dest='check_nonsingletons')
 
     args = parser.parse_args()
 
@@ -199,6 +206,8 @@ if __name__ == "__main__":
     else:
         func = FUNCTION_MAP[args.command]
         func(args)
+    print('\nFinished in %s.\n' % str(time.time() - start))
+    exit(0)
     # if not args.query and not args.train:
     #     parser.print_help(sys.stderr)
     #     sys.exit(1)
