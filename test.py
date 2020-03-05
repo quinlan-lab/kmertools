@@ -204,62 +204,18 @@ if __name__ == "__main__":
         func = FUNCTION_MAP[args.command]
         func(args, test='test')
     else:
+        try:
+            args.kmer_size = int(args.kmer_size)
+            args.nprocs = int(args.nprocs)
+            if args.nprocs < 1 or args.kmer_size < 1:
+                raise ValueError
+        except ValueError:
+            print('nprocs and kmer_size must be positive integers')
+            exit(1)
         func = FUNCTION_MAP[args.command]
         func(args)
     print('\nFinished in %s.\n' % str(time.time() - start))
     exit(0)
-    # if not args.query and not args.train:
-    #     parser.print_help(sys.stderr)
-    #     sys.exit(1)
-    # if args.loctest:
-    #     ksize = 7
-    #     nprocs = 12
-    # else:
-    #     ksize = int(args.kmer_size)
-    #     nprocs = int(args.nprocs)
-    # bpath = args.bed_path
-    # vpath = args.vcf_path
-    # fpath = args.fasta_path
-    # cpath = args.countspath
-    # strand_column = args.strand_col
-    # bednames_column = args.bed_name_col
-    #
-    # if args.query:
-    #     if args.loctest:
-    #         test_check_bed_regions_for_expected_mutations(['loctest'])
-    #     else:
-    #         test_check_bed_regions_for_expected_mutations(
-    #             [ksize, bpath, vpath, fpath, cpath, nprocs, strand_column, bednames_column])
-    # if args.train:
-    #     if args.loctest:
-    #         test_train_kmer_model(['loctest'])
-    #     else:
-    #         test_train_kmer_model([ksize, bpath, vpath, fpath, nprocs, args.invert, strand_column, bednames_column])
-    # try:
-    #     if args.loctest:
-    #         ksize = 7
-    #         nprocs = 12
-    #     else:
-    #         ksize = int(args.kmer_size)
-    #         nprocs = int(args.nprocs)
-    #     bpath = args.bed_path
-    #     vpath = args.vcf_path
-    #     fpath = args.fasta_path
-    #     cpath = args.countspath
-    #     if args.query:
-    #         if args.loctest:
-    #             test_check_bed_regions_for_expected_mutations(['loctest'])
-    #         else:
-    #             test_check_bed_regions_for_expected_mutations([ksize, bpath, vpath, fpath, cpath, nprocs])
-    #     if args.train:
-    #         if args.loctest:
-    #             test_train_kmer_model(['loctest'])
-    #         else:
-    #             test_train_kmer_model([ksize, bpath, vpath, fpath, nprocs, args.invert])
-    # except IndexError:
-    #     print("Invalid parameters. Exiting...")
-    #     parser.print_help()
-    #     exit(1)
 
 """
 various filepaths that may be useful:
