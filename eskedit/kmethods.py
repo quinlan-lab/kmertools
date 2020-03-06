@@ -282,7 +282,7 @@ def process_region(region, vcf_path, ref_fasta, kmer_size, singletons, nsingleto
                     adj_seq = ref[str(new_var.CHROM)][(new_var.POS - start_idx_offset):(new_var.POS + kmer_mid_idx)].seq
                     if complete_sequence(adj_seq):
                         ns_transitions[adj_seq][new_var.ALT[0]] += 1
-            print('Time to complete section ' + str(section) + ': ' + str(time.time() - start))
+            print('Time to complete section ' + str(section) + ': ' + str(time.time() - start), flush=True)
         return {'singleton_transitions': s_transitions, 'nonsingleton_transitions': ns_transitions,
                 'singleton_positions': s_positions, 'nonsingleton_positions': ns_positions}
 
@@ -371,7 +371,7 @@ def combine_df_kmer_indices(df):
         try:
             k = Kmer(i)
         except (ValueError, KeyError):
-            print("Row %s was skipped" % str(r.name))
+            print("Row %s was skipped" % str(r.name), file=sys.stderr)
             continue
         combined[k] += r
     return pd.DataFrame.from_dict(combined, orient='index').sort_index()
@@ -449,7 +449,7 @@ def query_region(vcf_path, fasta, chrom, kmer_size, bins=100, counts_path=None):
     fasta = Fasta(fasta)
     regions = get_split_chrom_vcf(vcf_path, chrom, bins)
     window = KmerWindow(kmer_size, counts_path=counts_path)
-    print('region\tactual\texpected\tratio')
+    print('region\tactual\texpected\tratio', flush=True)
     expected, actual = [], []
     for r in regions:
         try:
@@ -463,7 +463,7 @@ def query_region(vcf_path, fasta, chrom, kmer_size, bins=100, counts_path=None):
             ratio = 0
         else:
             ratio = singletons / exp
-        print("%s\t%d\t%f\t%f" % (str(r), all_vars, exp, ratio))
+        print("%s\t%d\t%f\t%f" % (str(r), all_vars, exp, ratio), flush=True)
 
 
 def query_bed_region(region, vcf_path, fasta, kmer_size, counts_path, count_frequency=True):
@@ -494,7 +494,7 @@ def query_bed_region(region, vcf_path, fasta, kmer_size, counts_path, count_freq
         if count_frequency:
             calc, total = count_regional_AF(vcf(str(region)))
             if not math.isclose(calc, total, rel_tol=1e-05):
-                print('WARNING: Calculated AF and VCF AF are different!     Calculated AF: %f     VCF AF: %f' % (calc, total), file=sys.stderr)
+                print('WARNING: Calculated AF and VCF AF are different!     Calculated AF: %f     VCF AF: %f' % (calc, total), file=sys.stderr, flush=True)
             observed_variants = calc
             # Setting this so output shows difference between calculated and listed AF and won't throw an error
             all_vars = total
@@ -512,7 +512,7 @@ def query_bed_region(region, vcf_path, fasta, kmer_size, counts_path, count_freq
         ratio = observed_variants / exp
     print('{0:<30} {1:>10} {2:>20} {3:>20} {4:>20}'.format((region.printstr(delim=' ')),
                                                            str(all_vars - observed_variants), str(observed_variants),
-                                                           str(exp), str(ratio)))
+                                                           str(exp), str(ratio)), flush=True)
     # return "%s\t%s\t%s\t%d\t%f\t%f\n" % (str(region.chrom), str(region.start), str(region.stop), act, exp, ratio)
     return "%s\t%d\t%d\t%f\t%f\n" % (region.printstr(), all_vars - observed_variants, observed_variants, exp, ratio)
 
@@ -524,7 +524,7 @@ def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, count
         kmer_size = int(kmer_size)
         nprocs = int(nprocs)
     except ValueError:
-        print('ERROR: kmer_size and nprocs must be integers')
+        print('ERROR: kmer_size and nprocs must be integers', file=sys.stderr, flush=True)
         exit(1)
     additional_fields = defaultdict(int)
     if strand_col is not None:
@@ -551,7 +551,7 @@ def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, count
             for k, v in additional_fields.items():
                 kwargs[k] = fields[v]
             regions.append(GRegion(*[fields[0], fields[1], fields[2]], **kwargs))
-    print('{0:<30} {1:>10} {2:>20} {3:>20}'.format('Region', 'Observed', 'Expected', 'Obs/Exp'))
+    print('{0:<30} {1:>10} {2:>20} {3:>20}'.format('Region', 'Observed', 'Expected', 'Obs/Exp'), flush=True)
     arguments = [(region, vcf_path, fasta_path, kmer_size, counts_path) for region in regions]
     pool = mp.Pool(nprocs)
     results = pool.starmap_async(query_bed_region, arguments)

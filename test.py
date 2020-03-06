@@ -75,12 +75,12 @@ def test_train_kmer_model(arguments, test=None):
     else:  # Test mode
         kmer_size = 3
         # big bed
-        # bedpath = '/Users/simonelongo/too_big_for_icloud/merged_exons_grch38.bed'
+        bedpath = '/Users/simonelongo/too_big_for_icloud/merged_exons_grch38.bed'
         # small bed
-        bedpath = '/Users/simonelongo/too_big_for_icloud/small_test.bed'
+        # bedpath = '/Users/simonelongo/too_big_for_icloud/small_test.bed'
         vcfpath = '/Users/simonelongo/too_big_for_icloud/gnomAD_v3/gnomad.genomes.r3.0.sites.vcf.bgz'
         fastapath = '/Users/simonelongo/too_big_for_icloud/ref_genome/hg38/hg38.fa'
-        numprocs = 1
+        numprocs = 8
         result = ek.train_kmer_model(bedpath, vcfpath, fastapath, kmer_size, nprocs=numprocs, clean_bed=True,
                                      invert_selection=False, strand_col=None,
                                      bed_names_col=None, singletons=False, nonsingletons=True)

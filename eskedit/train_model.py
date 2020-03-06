@@ -87,7 +87,7 @@ def model_region_singletons(data_container, vcf_path, fasta_path, kmer_size, reg
         else:
             sequence = fasta.get_seq(region.chrom, region.start, region.stop).seq.upper()
     except (KeyError, FetchError):
-        print('Region %s not found in fasta, continuing...' % str(region), file=sys.stderr)
+        print('Region %s not found in fasta, continuing...' % str(region), file=sys.stderr, flush=True)
         return
     region_ref_counts = ek.kmer_search(sequence, kmer_size)  # nprocs=1 due to short region
     r_string = str(region.chrom) + ':' + str(region.start) + '-' + str(region.stop)
@@ -109,7 +109,7 @@ def model_region_singletons(data_container, vcf_path, fasta_path, kmer_size, reg
     temp.add_count(region_ref_counts)
     temp.add_transition(transitions)
     data_container.set(temp)
-    print('Finished region %s in %s' % (str(region), str(time.time() - start)))
+    print('Finished region %s in %s' % (str(region), str(time.time() - start)), flush=True)
     return
 
 
@@ -119,12 +119,12 @@ def model_region_nonsingletons(data_container, vcf_path, fasta_path, kmer_size, 
             AC_cutoff = int(AC_cutoff)
         except ValueError:
             AC_cutoff = None
-            print('AC cutoff must be a positive integer. Ignoring user value and using SNVs with any AC.')
+            print('AC cutoff must be a positive integer. Ignoring user value and using SNVs with any AC.', file=sys.stderr, flush=True)
     try:
         kmer_size = int(kmer_size)
         if kmer_size < 1: raise ValueError
     except ValueError:
-        print('kmer_size must be a positive integer. Please check arguments.', file=sys.stderr)
+        print('kmer_size must be a positive integer. Please check arguments.', file=sys.stderr, flush=True)
         exit(1)
     start = time.time()
     fasta = Fasta(fasta_path)
@@ -140,7 +140,7 @@ def model_region_nonsingletons(data_container, vcf_path, fasta_path, kmer_size, 
         else:
             sequence = fasta.get_seq(region.chrom, region.start, region.stop).seq.upper()
     except (KeyError, FetchError):
-        print('Region %s not found in fasta, continuing...' % str(region), file=sys.stderr)
+        print('Region %s not found in fasta, continuing...' % str(region), file=sys.stderr, flush=True)
         return
     region_ref_counts = ek.kmer_search(sequence, kmer_size)  # nprocs=1 due to short region
     r_string = str(region.chrom) + ':' + str(region.start) + '-' + str(region.stop)
@@ -169,7 +169,7 @@ def model_region_nonsingletons(data_container, vcf_path, fasta_path, kmer_size, 
     temp.add_count(region_ref_counts)
     temp.add_transition(transitions)
     data_container.set(temp)
-    print('Finished region %s in %s' % (str(region), str(time.time() - start)))
+    print('Finished region %s in %s' % (str(region), str(time.time() - start)), flush=True)
     return
 
 
@@ -201,7 +201,7 @@ def train_kmer_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=1, invert
         if bed_names_col is not None:
             bed_names_col = int(bed_names_col)
     except ValueError:
-        print('ERROR: nprocs and column indices must be integers')
+        print('ERROR: nprocs and column indices must be integers', file=sys.stderr, flush=True)
         exit(1)
     manager = mp.Manager()
     # set up so master data count stays in shared memory
