@@ -10,6 +10,8 @@ import math
 import pandas as pd
 from pkg_resources import resource_filename
 from pyfaidx import Fasta, FetchError
+
+from eskedit.constants import get_autosome_names_grch38
 from eskedit.kclass import Variant, Kmer, KmerWindow, GRegion
 from eskedit.ksplit import split_seq, get_split_vcf_regions, get_split_chrom_vcf
 
@@ -100,7 +102,8 @@ def is_quality_snv(var_to_test, AC_cutoff=None):
     if AC_cutoff is not None:
         try:
             AC_cutoff = int(AC_cutoff)
-            return var_to_test.FILTER is None and var_to_test.INFO.get('variant_type') == 'snv' and var_to_test.INFO.get('AC') <= AC_cutoff
+            return var_to_test.FILTER is None and var_to_test.INFO.get(
+                'variant_type') == 'snv' and var_to_test.INFO.get('AC') <= AC_cutoff
         except ValueError:
             AC_cutoff = None
     return var_to_test.FILTER is None and var_to_test.INFO.get('variant_type') == 'snv'
@@ -466,7 +469,7 @@ def query_region(vcf_path, fasta, chrom, kmer_size, bins=100, counts_path=None):
         print("%s\t%d\t%f\t%f" % (str(r), all_vars, exp, ratio), flush=True)
 
 
-def query_bed_region(region, vcf_path, fasta, kmer_size, counts_path, count_frequency=True):
+def query_bed_region(region, vcf_path, fasta, kmer_size, counts_path, count_frequency):
     """
     @param region:
     @param vcf_path:
@@ -494,7 +497,8 @@ def query_bed_region(region, vcf_path, fasta, kmer_size, counts_path, count_freq
         if count_frequency:
             calc, total = count_regional_AF(vcf(str(region)))
             if not math.isclose(calc, total, rel_tol=1e-05):
-                print('WARNING: Calculated AF and VCF AF are different!     Calculated AF: %f     VCF AF: %f' % (calc, total), file=sys.stderr, flush=True)
+                print('WARNING: Calculated AF and VCF AF are different!     Calculated AF: %f     VCF AF: %f' % (
+                    calc, total), file=sys.stderr, flush=True)
             observed_variants = calc
             # Setting this so output shows difference between calculated and listed AF and won't throw an error
             all_vars = total
@@ -514,11 +518,11 @@ def query_bed_region(region, vcf_path, fasta, kmer_size, counts_path, count_freq
                                                            str(all_vars - observed_variants), str(observed_variants),
                                                            str(exp), str(ratio)), flush=True)
     # return "%s\t%s\t%s\t%d\t%f\t%f\n" % (str(region.chrom), str(region.start), str(region.stop), act, exp, ratio)
-    return "%s\t%d\t%d\t%f\t%f\n" % (region.printstr(), all_vars - observed_variants, observed_variants, exp, ratio)
+    return "%s\t%f\t%f\t%f\t%f\n" % (region.printstr(), all_vars - observed_variants, observed_variants, exp, ratio)
 
 
 def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, counts_path=None, outfile=None,
-                      strand_col=None, bed_names_col=None):
+                      strand_col=None, bed_names_col=None, singletons=False):
     # TODO: implement where bed regions are read and then analyzed for expected v actual
     try:
         kmer_size = int(kmer_size)
@@ -552,7 +556,9 @@ def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, count
                 kwargs[k] = fields[v]
             regions.append(GRegion(*[fields[0], fields[1], fields[2]], **kwargs))
     print('{0:<30} {1:>10} {2:>20} {3:>20}'.format('Region', 'Observed', 'Expected', 'Obs/Exp'), flush=True)
-    arguments = [(region, vcf_path, fasta_path, kmer_size, counts_path) for region in regions]
+    # Expected arguments query_bed_region(region, vcf_path, fasta, kmer_size, counts_path, count_frequency)
+
+    arguments = [(region, vcf_path, fasta_path, kmer_size, counts_path, (not singletons)) for region in regions]
     pool = mp.Pool(nprocs)
     results = pool.starmap_async(query_bed_region, arguments)
     pool.close()
@@ -570,5 +576,35 @@ def is_dash(pdash):
     return False
 
 
+def check_clinvar(vcf_path, fasta_path, kmer_size, left_context=0, right_context=0, counts_path=None):
+    # VCF is 1-based, closed
+    # BED is 0-based, half-open
+    names = get_autosome_names_grch38()
+    vcf = VCF(vcf_path)
+    fasta = Fasta(fasta_path, read_ahead=10_000_000)
+    window = KmerWindow(kmer_size, counts_path=counts_path)
+    clinvar = []
+    for variant in vcf:
+        if variant.CHROM not in names: continue
+        start = variant.POS - left_context
+        stop = variant.POS + right_context
+        # start = variant.POS - (kmer_size)
+        # stop = variant.POS + (kmer_size)
+        seq = fasta.get_seq(variant.CHROM, start, stop).seq.upper()
+        clinvar.append((variant.CHROM, variant.POS, variant.INFO.get("CLNSIG"),
+                        window.calculate_expected(seq), seq))
+    return clinvar
+
+
 if __name__ == "__main__":
     print("Testing from kmethods.")
+    starttime = time.time()
+    vp = '/Users/simonelongo/Downloads/chr_clinvar.hg38.bed.gz'
+    # vp = '/Users/simonelongo/Downloads/clinvar_chr22.vcf.gz'
+    fp = '/Users/simonelongo/too_big_for_icloud/ref_genome/hg38/hg38.fa'
+    cv = check_clinvar(vp, fp, 3, left_context=5, right_context=5)
+    df = (pd.DataFrame(cv))
+    df.columns = ['chrom', 'pos', 'clnsig', 'expected', 'kmer']
+    df.to_csv('5left5right_clinvar_3mers.csv', index=False)
+
+    print('Done in %s' % str(time.time() - starttime))

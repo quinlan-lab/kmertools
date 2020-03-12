@@ -96,7 +96,7 @@ def test_check_bed_regions_for_expected_mutations(arguments, test=None):
         ek.check_bed_regions(arguments.bed_path, arguments.vcf_path, arguments.fasta_path, arguments.kmer_size,
                              arguments.nprocs,
                              counts_path=arguments.countspath,
-                             strand_col=arguments.strand_col, bed_names_col=arguments.bed_name_col)
+                             strand_col=arguments.strand_col, bed_names_col=arguments.bed_name_col, singletons=arguments.check_singletons)
     else:
         kmer_size = 7
         # bedpath = '/Users/simonelongo/too_big_for_icloud/merged_exons_grch38.bed'
@@ -109,7 +109,7 @@ def test_check_bed_regions_for_expected_mutations(arguments, test=None):
         strand = 5
         bednames = 3
         ek.check_bed_regions(bedpath, vcfpath, fastapath, kmer_size, numprocs, counts_path=countspath,
-                             strand_col=strand, bed_names_col=bednames)
+                             strand_col=strand, bed_names_col=bednames, singletons=False)
     # elif len(arguments) == 8:
     #     kmer_size = int(arguments[0])
     #     bedpath = arguments[1]

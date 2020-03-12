@@ -17,7 +17,7 @@ class Variant:
                 self.qual = False
             fields = kwargs.get('fields')
             if fields is None:
-                fields = ['vep']
+                fields = []
             self.REF = variant.REF
             self.ALT = variant.ALT
             self.POS = variant.POS
@@ -29,7 +29,12 @@ class Variant:
                 self.info[f] = str(variant.INFO.get(f))
             self.AC = variant.INFO.get('AC')
             self.AN = variant.INFO.get('AN')
-            self.wAF = self.AC / self.AN
+            if self.AC is None or self.AN is None:
+                self.AC = 0
+                self.AN = 0
+                self.wAF = 0
+            else:
+                self.wAF = self.AC / self.AN
         self.INDEX = self.CHROM + ' ' + str(self.POS)
 
     def __str__(self):
