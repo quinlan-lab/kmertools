@@ -25,7 +25,7 @@ def bin_chrom_vcf(chrom, chrom_len, nbins):
     return regions
 
 
-def process_chrom_bin(region, kmer_size, vcf_path, fasta_path):
+def process_chrom_bin(region, kmer_size, vcf_path, fasta_path, AF=False):
     start = time.time()
     fasta = Fasta(fasta_path)
     vcf = VCF(vcf_path)
@@ -39,20 +39,26 @@ def process_chrom_bin(region, kmer_size, vcf_path, fasta_path):
     region_ref_counts, gc_content, n_count = ek.kmer_search(sequence, kmer_size, count_gc=True,
                                                             count_n=True)  # nprocs=1 due to short region
     r_string = str(region.chrom) + ':' + str(region.start) + '-' + str(region.stop)
-    transitions = defaultdict(lambda: array.array('L', [0, 0, 0, 0]))
+    if AF:
+        transitions = defaultdict(lambda: array.array('d', [0, 0, 0, 0]))
+    else:
+        transitions = defaultdict(lambda: array.array('L', [0, 0, 0, 0]))
     # Define indices for nucleotides
     nuc_idx = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
     # count, singletons = ek.count_regional_variants(vcf(r_string))
     for variant in vcf(r_string):
         if ek.is_singleton_snv(variant):
-            new_var = Variant(variant=variant, fields=['vep'])
+            new_var = Variant(variant=variant)
             # take 7mer around variant. pyfaidx excludes start index and includes end index
             adj_seq = fasta[str(new_var.CHROM)][(new_var.POS - start_idx_offset):(new_var.POS + kmer_mid_idx)].seq
             if str(adj_seq[kmer_mid_idx]).upper() != str(variant.REF).upper():
                 print('WARNING: Reference mismatch\tFasta REF: %s\tVCF REF: %s' % (adj_seq[kmer_mid_idx], variant.REF),
                       file=sys.stderr, flush=True)
             if ek.complete_sequence(adj_seq):
-                transitions[adj_seq.upper()][nuc_idx[new_var.ALT[0]]] += 1
+                if AF:
+                    transitions[adj_seq.upper()][nuc_idx[new_var.ALT[0]]] += variant.INFO.get('AF')
+                else:
+                    transitions[adj_seq.upper()][nuc_idx[new_var.ALT[0]]] += 1
     if len(transitions.keys()) > 0 and len(region_ref_counts.keys()) > 0:
         bin_trans = pd.DataFrame.from_dict(transitions, orient='index')
         bin_trans.sort_index(inplace=True)
@@ -72,7 +78,7 @@ def process_chrom_bin(region, kmer_size, vcf_path, fasta_path):
         return region, None
 
 
-def chrom_bin_mutability(vcfpath, fastapath, kmer_size, nbins, chroms=None, nprocs=1):
+def chrom_bin_mutability(vcfpath, fastapath, kmer_size, nbins, chroms=None, nprocs=1, af=False):
     # prepare bins for each chromosome
     try:
         kmer_size = int(kmer_size)
@@ -98,7 +104,7 @@ def chrom_bin_mutability(vcfpath, fastapath, kmer_size, nbins, chroms=None, npro
         chrom_bins.extend(bin_chrom_vcf(k, v, nbins))
 
     pool = mp.Pool(nprocs)
-    arguments = [(region, kmer_size, vcfpath, fastapath) for region in chrom_bins]
+    arguments = [(region, kmer_size, vcfpath, fastapath, af) for region in chrom_bins]
     results = pool.starmap(process_chrom_bin, arguments)
     pool.close()
     pool.join()

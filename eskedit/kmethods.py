@@ -437,13 +437,15 @@ def count_regional_variants(vcf_region):
 
 
 def count_regional_AF(vcf_region):
-    total = 0
-    calc = 0
+    AF = 0
+    AN = 0
+    AC = 0
     for v in vcf_region:
         if is_quality_snv(v):
-            total += v.INFO.get('AF')
-            calc += v.INFO.get('AC') / v.INFO.get('AN')
-    return calc, total
+            AF += v.INFO.get('AF')
+            AC += v.INFO.get('AC')
+            AN += v.INFO.get('AN')
+    return AF, AC, AN
 
 
 def query_region(vcf_path, fasta, chrom, kmer_size, bins=100, counts_path=None):
@@ -495,30 +497,45 @@ def query_bed_region(region, vcf_path, fasta, kmer_size, counts_path, count_freq
             sequence = fasta.get_seq(region.chrom, region.start, region.stop).seq.upper()
         exp = window.calculate_expected(sequence)  # this does account for strandedness
         if count_frequency:
-            calc, total = count_regional_AF(vcf(str(region)))
-            if not math.isclose(calc, total, rel_tol=1e-05):
-                print('WARNING: Calculated AF and VCF AF are different!     Calculated AF: %f     VCF AF: %f' % (
-                    calc, total), file=sys.stderr, flush=True)
-            observed_variants = calc
-            # Setting this so output shows difference between calculated and listed AF and won't throw an error
-            all_vars = total
+            AF, AC, AN = count_regional_AF(vcf(str(region)))
+            # if not math.isclose(calc, total, rel_tol=1e-05):
+            #     print('WARNING: Calculated AF and VCF AF are different!     Calculated AF: %f     VCF AF: %f' % (
+            #         calc, total), file=sys.stderr, flush=True)
+            field1 = AC
+            field2 = AN
+            field3 = AF
+            if exp == 0:
+                field4 = 0
+            else:
+                field4 = AF / exp
             pass
         else:
             # does not account for strandedness here
             all_vars, observed_variants = count_regional_variants(vcf(str(region)))
+            field1 = all_vars - observed_variants
+            field2 = observed_variants
+            field3 = exp
+            if exp == 0:
+                field4 = 0
+            else:
+                field4 = observed_variants / exp
     except (KeyError, FetchError):
-        exp = 0
-        observed_variants = 0
-        all_vars = 0
-    if exp == 0:
-        ratio = 0
-    else:
-        ratio = observed_variants / exp
+        field1 = 0
+        field2 = 0
+        field3 = 0
+        field4 = 0
+    #     exp = 0
+    #     observed_variants = 0
+    #     all_vars = 0
+    # if exp == 0:
+    #     ratio = 0
+    # else:
+    #     ratio = observed_variants / exp
     print('{0:<30} {1:>10} {2:>20} {3:>20} {4:>20}'.format((region.printstr(delim=' ')),
-                                                           str(all_vars - observed_variants), str(observed_variants),
-                                                           str(exp), str(ratio)), flush=True)
+                                                           str(field1), str(field2),
+                                                           str(field3), str(field4)), flush=True)
     # return "%s\t%s\t%s\t%d\t%f\t%f\n" % (str(region.chrom), str(region.start), str(region.stop), act, exp, ratio)
-    return "%s\t%f\t%f\t%f\t%f\n" % (region.printstr(), all_vars - observed_variants, observed_variants, exp, ratio)
+    return "%s\t%f\t%f\t%f\t%f\n" % (region.printstr(), field1, field2, field3, field4)
 
 
 def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, counts_path=None, outfile=None,

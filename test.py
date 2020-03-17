@@ -66,7 +66,7 @@ def test_train_kmer_model(arguments, test=None):
                                      clean_bed=True,
                                      invert_selection=arguments.invert, strand_col=arguments.strand_col,
                                      bed_names_col=arguments.bed_name_col, singletons=arguments.check_singletons,
-                                     nonsingletons=arguments.check_nonsingletons)
+                                     nonsingletons=arguments.check_AF)
         for k, v, in result.items():
             outfile1 = 'regional_' + str(k) + '_' + str(arguments.kmer_size) + 'mer_count.csv'
             outfile2 = 'regional_transitions_' + str(k) + '_' + str(arguments.kmer_size) + 'mer.csv'
@@ -145,7 +145,7 @@ def test_chrom_bin_mutability(arguments, test=None):  # vcfpath, fastapath, kmer
     if test is None:
         mut_table = ek.chrom_bin_mutability(arguments.vcf_path, arguments.fasta_path, arguments.kmer_size,
                                             arguments.nbins,
-                                            chroms=arguments.chrom_list, nprocs=int(arguments.nprocs))
+                                            chroms=arguments.chrom_list, nprocs=int(arguments.nprocs), af=arguments.check_AF)
         mut_table.to_csv('chrom_%sbins_%smers.csv' % (arguments.nbins, arguments.kmer_size))
     else:
         vcfpath = '/Users/simonelongo/too_big_for_icloud/gnomAD_v3/gnomad.genomes.r3.0.sites.vcf.bgz'
@@ -154,7 +154,8 @@ def test_chrom_bin_mutability(arguments, test=None):  # vcfpath, fastapath, kmer
         nbins = 24
         chroms = ['chr22']
         numprocs = 6
-        mut_table = ek.chrom_bin_mutability(vcfpath, fastapath, kmer_size, nbins, chroms=chroms, nprocs=numprocs)
+        AF = True
+        mut_table = ek.chrom_bin_mutability(vcfpath, fastapath, kmer_size, nbins, chroms=chroms, nprocs=numprocs, af=AF)
         mut_table.to_csv('TEST_chrom_%dbins_%dmers.csv' % (nbins, kmer_size))
     return
 
@@ -196,7 +197,7 @@ if __name__ == "__main__":
     parser.add_argument('--bed_names', action='store', dest='bed_name_col',
                         help='Enter (zero-based) integer value of column in bed file with region/gene name information')
     parser.add_argument('--singletons', action='store_true', dest='check_singletons')
-    parser.add_argument('--notsingletons', action='store_true', dest='check_nonsingletons')
+    parser.add_argument('--AF', action='store_true', dest='check_AF')
 
     args = parser.parse_args()
 
