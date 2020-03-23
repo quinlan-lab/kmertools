@@ -422,7 +422,7 @@ def get_counts_dict(kmer_size, alt_path=None):
         filepath = alt_path
     df = pd.read_csv(filepath, index_col=0)
     # df['probability'] = df.iloc[:, :4].apply
-    return dict(zip(df.index, df.frequency))
+    return dict(zip(df.index, df.iloc[:, 0]))
 
 
 def count_regional_variants(vcf_region):
@@ -499,11 +499,11 @@ def query_bed_region(region, vcf_path, fasta, kmer_size, counts_path, count_freq
     try:
         if region.strand is not None:
             if is_dash(region.strand):
-                sequence = fasta.get_seq(region.chrom, region.start-shift, region.stop+shift).complement.seq.upper()
+                sequence = fasta.get_seq(region.chrom, region.start - shift, region.stop + shift).complement.seq.upper()
             else:
-                sequence = fasta.get_seq(region.chrom, region.start-shift, region.stop+shift).seq.upper()
+                sequence = fasta.get_seq(region.chrom, region.start - shift, region.stop + shift).seq.upper()
         else:
-            sequence = fasta.get_seq(region.chrom, region.start-shift, region.stop+shift).seq.upper()
+            sequence = fasta.get_seq(region.chrom, region.start - shift, region.stop + shift).seq.upper()
         exp = window.calculate_expected(sequence)  # this does account for strandedness
         if count_frequency:
             AF, AC, AN = count_regional_AF(vcf(str(region)))
@@ -514,9 +514,9 @@ def query_bed_region(region, vcf_path, fasta, kmer_size, counts_path, count_freq
             field2 = AN
             field3 = AF
             if exp == 0:
-                field4 = 0
+                field4 = exp
             else:
-                field4 = AF / exp
+                field4 = exp
             pass
         else:
             # does not account for strandedness here
@@ -565,7 +565,7 @@ def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, count
         field1 = 'AC'
         field2 = 'AN'
         field3 = 'AF'
-        field4 = 'ObsExpRatio'
+        field4 = 'ExpectedAF'
 
     try:
         kmer_size = int(kmer_size)
