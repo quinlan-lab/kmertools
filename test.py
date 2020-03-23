@@ -143,7 +143,7 @@ def test_check_bed_regions_for_expected_mutations(arguments, test=None):
 
 
 def test_chrom_bin_mutability(arguments, test=None):  # vcfpath, fastapath, kmer_size, nbins, chroms=None, numprocs=1):
-    if test is None:
+    if test is None and arguments.bed_path is None:
         mut_table = ek.chrom_bin_mutability(arguments.vcf_path, arguments.fasta_path, arguments.kmer_size,
                                             arguments.nbins,
                                             chroms=arguments.chrom_list, nprocs=int(arguments.nprocs),
