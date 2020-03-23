@@ -215,13 +215,13 @@ def train_kmer_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=1, invert
     results = defaultdict(tuple)
     if singletons:
         arguments = [(dc, vcf_path, fasta_path, kmer_size, region) for region in regions]
-        pool.starmap(model_region_singletons, arguments)
+        pool.starmap_async(model_region_singletons, arguments)
         pool.close()
         pool.join()
         results['singletons'] = dc.value.get()
     if nonsingletons:
         arguments = [(dc, vcf_path, fasta_path, kmer_size, region, AC_cutoff) for region in regions]
-        pool.starmap(model_region_nonsingletons, arguments)
+        pool.starmap_async(model_region_nonsingletons, arguments)
         pool.close()
         pool.join()
         results['all_variants'] = dc.value.get()

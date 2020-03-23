@@ -437,14 +437,20 @@ def count_regional_variants(vcf_region):
 
 
 def count_regional_AF(vcf_region):
-    AF = 0
+    AF = 0.0
     AN = 0
     AC = 0
     for v in vcf_region:
         if is_quality_snv(v):
-            AF += v.INFO.get('AF')
-            AC += v.INFO.get('AC')
-            AN += v.INFO.get('AN')
+            try:
+                AF += float(v.INFO.get('AF'))
+                AC += int(v.INFO.get('AC'))
+                AN += int(v.INFO.get('AN'))
+            except ValueError:
+                AF = 0
+                AC = 0
+                AN = 0
+                print("ERROR: casting AC, AF, or AN in %s" % (str(vcf_region)), file=sys.stderr, flush=True)
     return AF, AC, AN
 
 
@@ -486,15 +492,18 @@ def query_bed_region(region, vcf_path, fasta, kmer_size, counts_path, count_freq
     vcf = VCF(vcf_path)
     fasta = Fasta(fasta)
     window = KmerWindow(kmer_size, counts_path=counts_path)
-    # expected, actual = [], []
+    # The first kmer actually begins centered around first nucleotide in sequence so
+    # start position is shifted upstream by half the kmer length
+    # end position is shifted downstream by the same
+    shift = kmer_size // 2
     try:
         if region.strand is not None:
             if is_dash(region.strand):
-                sequence = fasta.get_seq(region.chrom, region.start, region.stop).complement.seq.upper()
+                sequence = fasta.get_seq(region.chrom, region.start-shift, region.stop+shift).complement.seq.upper()
             else:
-                sequence = fasta.get_seq(region.chrom, region.start, region.stop).seq.upper()
+                sequence = fasta.get_seq(region.chrom, region.start-shift, region.stop+shift).seq.upper()
         else:
-            sequence = fasta.get_seq(region.chrom, region.start, region.stop).seq.upper()
+            sequence = fasta.get_seq(region.chrom, region.start-shift, region.stop+shift).seq.upper()
         exp = window.calculate_expected(sequence)  # this does account for strandedness
         if count_frequency:
             AF, AC, AN = count_regional_AF(vcf(str(region)))
@@ -534,13 +543,30 @@ def query_bed_region(region, vcf_path, fasta, kmer_size, counts_path, count_freq
     print('{0:<30} {1:>10} {2:>20} {3:>20} {4:>20}'.format((region.printstr(delim=' ')),
                                                            str(field1), str(field2),
                                                            str(field3), str(field4)), flush=True)
-    # return "%s\t%s\t%s\t%d\t%f\t%f\n" % (str(region.chrom), str(region.start), str(region.stop), act, exp, ratio)
-    return "%s\t%f\t%f\t%f\t%f\n" % (region.printstr(), field1, field2, field3, field4)
+    return "%s\t%s\t%s\t%s\t%s\n" % (region.printstr(), str(field1), str(field2), str(field3), str(field4))
 
 
 def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, counts_path=None, outfile=None,
                       strand_col=None, bed_names_col=None, singletons=False):
     # TODO: implement where bed regions are read and then analyzed for expected v actual
+
+    # field1 = AC
+    # field2 = AN
+    # field3 = AF
+    # field1 = all_vars - observed_variants
+    # field2 = observed_variants
+    # field3 = exp
+    if singletons:
+        field1 = 'NotSingletons'
+        field2 = 'Singletons'
+        field3 = 'Expected'
+        field4 = 'ObsExpRatio'
+    else:
+        field1 = 'AC'
+        field2 = 'AN'
+        field3 = 'AF'
+        field4 = 'ObsExpRatio'
+
     try:
         kmer_size = int(kmer_size)
         nprocs = int(nprocs)
@@ -564,7 +590,7 @@ def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, count
     if outfile is None:
         outfile = '{}mer_expected_mutation_count.dat'.format(kmer_size)
     with open(outfile, 'w') as output:
-        output.write('Region\tObserved\tExpected\tObsToExp\n')
+        output.write('%s\t%s\t%s\t%s\t%s\n' % ('Region', field1, field2, field3, field4))
     with open(bed_path, 'r') as bedfile:
         kwargs = defaultdict(str)
         for line in bedfile.readlines():
@@ -572,7 +598,7 @@ def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, count
             for k, v in additional_fields.items():
                 kwargs[k] = fields[v]
             regions.append(GRegion(*[fields[0], fields[1], fields[2]], **kwargs))
-    print('{0:<30} {1:>10} {2:>20} {3:>20}'.format('Region', 'Observed', 'Expected', 'Obs/Exp'), flush=True)
+    print('{0:<30} {1:>10} {2:>20} {3:>20} {4:>20}'.format('Region', field1, field2, field3, field4), flush=True)
     # Expected arguments query_bed_region(region, vcf_path, fasta, kmer_size, counts_path, count_frequency)
 
     arguments = [(region, vcf_path, fasta_path, kmer_size, counts_path, (not singletons)) for region in regions]

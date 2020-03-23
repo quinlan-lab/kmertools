@@ -164,6 +164,8 @@ if __name__ == "__main__":
     # register SIGINT handler
     signal(SIGINT, sigint_handler)
     start = time.time()
+
+    # keywords for script functionality
     FUNCTION_MAP = {
         'query': test_check_bed_regions_for_expected_mutations,
         'train': test_train_kmer_model,
