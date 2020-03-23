@@ -154,6 +154,13 @@ class GRegion:
             raise ValueError(
                 'GRegion requires 3 arguments: chrom, start, and stop. All other values must be passed as keywords.')
 
+    def vcf_str(self):
+        return str(self.chrom) + ':' + str(self.start) + '-' + str(self.stop)
+
+    def str_name(self):
+        return str(self.chrom) + '\t' + str(self.start) + '\t' + str(self.stop) + '\t' + str(self.name) + '\t' + str(
+            self.strand)
+
     # def __init__(self, chrom, start, stop):
     #     # self.region = [chrom, start, stop]
     #     self.chrom = chrom

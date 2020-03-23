@@ -208,128 +208,128 @@ def get_kmer_count(sequence, kmer_length, nprocs=None):
     return counts
 
 
-def process_region(region, vcf_path, ref_fasta, kmer_size, singletons, nsingletons):
-    """
-    Process a GRegion to look for variants and sequence context
-    :param region: GRegion as defined in kclass.py
-    :param vcf_path: path to VCF file
-    :param ref_fasta: path to reference genome in '.fa' format
-    :param kmer_size: integer of total length of k-mer
-    :param singletons: if True, will include singleton variants
-    :param nsingletons: if True, will include nonsingleton variants
-    :return: a dictionary containing the type of result mapped to the data structure
-    """
-    start_idx_offset = int(kmer_size / 2 + 1)
-    kmer_mid_idx = int(start_idx_offset - 1)
-    # Open iterators
-    vcf = VCF(vcf_path)
-    ref = Fasta(ref_fasta)
-
-    if singletons and not nsingletons:
-        print('Processing only singleton variants')
-        s_transitions = defaultdict(Counter)
-        s_positions = defaultdict(Variant)
-        for section in region:
-            start = time.time()
-            print('Processing ' + str(section))
-            for variant in vcf(str(section)):
-                if is_singleton_snv(variant):
-                    new_var = Variant(variant=variant, fields=['vep'])
-                    s_positions[new_var.INDEX] = new_var
-                    # take 7mer around variant. pyfaidx excludes start index and includes end index
-                    adj_seq = ref[str(new_var.CHROM)][(new_var.POS - start_idx_offset):(new_var.POS + kmer_mid_idx)].seq
-                    if complete_sequence(adj_seq):
-                        s_transitions[adj_seq.upper()][new_var.ALT[0]] += 1
-            print('Time to complete section ' + str(section) + ': ' + str(time.time() - start))
-        return {'singleton_transitions': s_transitions, 'singleton_positions': s_positions}
-
-    elif nsingletons and not singletons:
-        print('Procesing only non-singleton variants')
-        ns_transitions = defaultdict(Counter)
-        ns_positions = defaultdict(Variant)
-        for section in region:
-            start = time.time()
-            print('Processing ' + str(section))
-            for variant in vcf(str(section)):
-                if is_quality_nonsingleton(variant):
-                    new_var = Variant(variant=variant, fields=['vep'])
-                    ns_positions[new_var.INDEX] = new_var
-                    # take 7mer around variant. pyfaidx excludes start index and includes end index
-                    adj_seq = ref[str(new_var.CHROM)][(new_var.POS - start_idx_offset):(new_var.POS + kmer_mid_idx)].seq
-                    if complete_sequence(adj_seq):
-                        ns_transitions[adj_seq][new_var.ALT[0]] += 1
-            print('Time to complete section ' + str(section) + ': ' + str(time.time() - start))
-        return {'nonsingleton_transitions': ns_transitions, 'nonsingleton_positions': ns_positions}
-
-    elif singletons and nsingletons:
-        print('Processing singleton and non-singleton variants')
-        s_transitions = defaultdict(Counter)
-        s_positions = defaultdict(Variant)
-        ns_transitions = defaultdict(Counter)
-        ns_positions = defaultdict(Variant)
-        for section in region:
-            start = time.time()
-            print('Processing ' + str(section))
-            for variant in vcf(str(section)):
-                if is_singleton_snv(variant):
-                    new_var = Variant(variant=variant, fields=['vep'])
-                    s_positions[new_var.INDEX] = new_var
-                    # take 7mer around variant. pyfaidx excludes start index and includes end index
-                    adj_seq = ref[str(new_var.CHROM)][(new_var.POS - start_idx_offset):(new_var.POS + kmer_mid_idx)].seq
-                    if complete_sequence(adj_seq):
-                        s_transitions[adj_seq][new_var.ALT[0]] += 1
-                if is_quality_nonsingleton(variant):
-                    new_var = Variant(variant)
-                    ns_positions[new_var.INDEX] = new_var
-                    # take 7mer around variant. pyfaidx excludes start index and includes end index
-                    adj_seq = ref[str(new_var.CHROM)][(new_var.POS - start_idx_offset):(new_var.POS + kmer_mid_idx)].seq
-                    if complete_sequence(adj_seq):
-                        ns_transitions[adj_seq][new_var.ALT[0]] += 1
-            print('Time to complete section ' + str(section) + ': ' + str(time.time() - start), flush=True)
-        return {'singleton_transitions': s_transitions, 'nonsingleton_transitions': ns_transitions,
-                'singleton_positions': s_positions, 'nonsingleton_positions': ns_positions}
-
-    else:
-        print('No variants tested. Please have at least one keyword \'singletons\' or \'nsingletons\' set to \'True\'')
-        return
-
-
-def get_kmer_context(vcf_path, ref_fasta, kmer_length, nprocs=0, singletons=True, nsingletons=False):
-    """
-    Process VCF in parallel to obtain specified variants and their k-mer contexts
-    :param vcf_path: Path to VCF file
-    :param ref_fasta: Path to reference Fasta ('.fa')
-    :param kmer_length: Integer for k-mer size (eg. 3 will give nucleotides 1 position to the left and right)
-    :param nprocs: Number of CPUs to use
-    :param singletons: True/False process singletons?
-    :param nsingletons: True/False proces nonsingletons? (NOTE: These 2 can be used together)
-    :return: A list containing dictionaries from each process. Maps title of information to the data structure. Post-processing will be a future feature.
-    """
-    if singletons and not nsingletons:
-        print('Processing %s singletons' % vcf_path)
-    elif nsingletons and not singletons:
-        print('Processing %s nonsingletons' % vcf_path)
-    elif singletons and nsingletons:
-        print('Processing %s singletons and nonsingletons' % vcf_path)
-    else:
-        print(
-            'Not processing anything. Please have at least one keyword \'singletons\' or \'nsingletons\' set to \'True\'')
-
-    if nprocs == 0:
-        nprocs = mp.cpu_count()
-    # intentionally create more chunks to even CPU distribution
-    regions = get_split_vcf_regions(vcf_path, nprocs * 20)  # TODO: This number (20) can and should change to optimize
-    arguments = [(region,
-                  vcf_path,
-                  ref_fasta,
-                  kmer_length,
-                  singletons,
-                  nsingletons) for region in regions]
-    pool = mp.Pool(nprocs)
-    results = [result.get() for result in [pool.starmap_async(process_region, arguments)]]
-    pool.close()
-    pool.join()
-    return results[0]
+# def process_region(region, vcf_path, ref_fasta, kmer_size, singletons, nsingletons):
+#     """
+#     Process a GRegion to look for variants and sequence context
+#     :param region: GRegion as defined in kclass.py
+#     :param vcf_path: path to VCF file
+#     :param ref_fasta: path to reference genome in '.fa' format
+#     :param kmer_size: integer of total length of k-mer
+#     :param singletons: if True, will include singleton variants
+#     :param nsingletons: if True, will include nonsingleton variants
+#     :return: a dictionary containing the type of result mapped to the data structure
+#     """
+#     start_idx_offset = int(kmer_size / 2 + 1)
+#     kmer_mid_idx = int(start_idx_offset - 1)
+#     # Open iterators
+#     vcf = VCF(vcf_path)
+#     ref = Fasta(ref_fasta)
+#
+#     if singletons and not nsingletons:
+#         print('Processing only singleton variants')
+#         s_transitions = defaultdict(Counter)
+#         s_positions = defaultdict(Variant)
+#         for section in region:
+#             start = time.time()
+#             print('Processing ' + str(section))
+#             for variant in vcf(str(section)):
+#                 if is_singleton_snv(variant):
+#                     new_var = Variant(variant=variant, fields=['vep'])
+#                     s_positions[new_var.INDEX] = new_var
+#                     # take 7mer around variant. pyfaidx excludes start index and includes end index
+#                     adj_seq = ref[str(new_var.CHROM)][(new_var.POS - start_idx_offset):(new_var.POS + kmer_mid_idx)].seq
+#                     if complete_sequence(adj_seq):
+#                         s_transitions[adj_seq.upper()][new_var.ALT[0]] += 1
+#             print('Time to complete section ' + str(section) + ': ' + str(time.time() - start))
+#         return {'singleton_transitions': s_transitions, 'singleton_positions': s_positions}
+#
+#     elif nsingletons and not singletons:
+#         print('Procesing only non-singleton variants')
+#         ns_transitions = defaultdict(Counter)
+#         ns_positions = defaultdict(Variant)
+#         for section in region:
+#             start = time.time()
+#             print('Processing ' + str(section))
+#             for variant in vcf(str(section)):
+#                 if is_quality_nonsingleton(variant):
+#                     new_var = Variant(variant=variant, fields=['vep'])
+#                     ns_positions[new_var.INDEX] = new_var
+#                     # take 7mer around variant. pyfaidx excludes start index and includes end index
+#                     adj_seq = ref[str(new_var.CHROM)][(new_var.POS - start_idx_offset):(new_var.POS + kmer_mid_idx)].seq
+#                     if complete_sequence(adj_seq):
+#                         ns_transitions[adj_seq][new_var.ALT[0]] += 1
+#             print('Time to complete section ' + str(section) + ': ' + str(time.time() - start))
+#         return {'nonsingleton_transitions': ns_transitions, 'nonsingleton_positions': ns_positions}
+#
+#     elif singletons and nsingletons:
+#         print('Processing singleton and non-singleton variants')
+#         s_transitions = defaultdict(Counter)
+#         s_positions = defaultdict(Variant)
+#         ns_transitions = defaultdict(Counter)
+#         ns_positions = defaultdict(Variant)
+#         for section in region:
+#             start = time.time()
+#             print('Processing ' + str(section))
+#             for variant in vcf(str(section)):
+#                 if is_singleton_snv(variant):
+#                     new_var = Variant(variant=variant, fields=['vep'])
+#                     s_positions[new_var.INDEX] = new_var
+#                     # take 7mer around variant. pyfaidx excludes start index and includes end index
+#                     adj_seq = ref[str(new_var.CHROM)][(new_var.POS - start_idx_offset):(new_var.POS + kmer_mid_idx)].seq
+#                     if complete_sequence(adj_seq):
+#                         s_transitions[adj_seq][new_var.ALT[0]] += 1
+#                 if is_quality_nonsingleton(variant):
+#                     new_var = Variant(variant)
+#                     ns_positions[new_var.INDEX] = new_var
+#                     # take 7mer around variant. pyfaidx excludes start index and includes end index
+#                     adj_seq = ref[str(new_var.CHROM)][(new_var.POS - start_idx_offset):(new_var.POS + kmer_mid_idx)].seq
+#                     if complete_sequence(adj_seq):
+#                         ns_transitions[adj_seq][new_var.ALT[0]] += 1
+#             print('Time to complete section ' + str(section) + ': ' + str(time.time() - start), flush=True)
+#         return {'singleton_transitions': s_transitions, 'nonsingleton_transitions': ns_transitions,
+#                 'singleton_positions': s_positions, 'nonsingleton_positions': ns_positions}
+#
+#     else:
+#         print('No variants tested. Please have at least one keyword \'singletons\' or \'nsingletons\' set to \'True\'')
+#         return
+#
+#
+# def get_kmer_context(vcf_path, ref_fasta, kmer_length, nprocs=0, singletons=True, nsingletons=False):
+#     """
+#     Process VCF in parallel to obtain specified variants and their k-mer contexts
+#     :param vcf_path: Path to VCF file
+#     :param ref_fasta: Path to reference Fasta ('.fa')
+#     :param kmer_length: Integer for k-mer size (eg. 3 will give nucleotides 1 position to the left and right)
+#     :param nprocs: Number of CPUs to use
+#     :param singletons: True/False process singletons?
+#     :param nsingletons: True/False proces nonsingletons? (NOTE: These 2 can be used together)
+#     :return: A list containing dictionaries from each process. Maps title of information to the data structure. Post-processing will be a future feature.
+#     """
+#     if singletons and not nsingletons:
+#         print('Processing %s singletons' % vcf_path)
+#     elif nsingletons and not singletons:
+#         print('Processing %s nonsingletons' % vcf_path)
+#     elif singletons and nsingletons:
+#         print('Processing %s singletons and nonsingletons' % vcf_path)
+#     else:
+#         print(
+#             'Not processing anything. Please have at least one keyword \'singletons\' or \'nsingletons\' set to \'True\'')
+#
+#     if nprocs == 0:
+#         nprocs = mp.cpu_count()
+#     # intentionally create more chunks to even CPU distribution
+#     regions = get_split_vcf_regions(vcf_path, nprocs * 20)  # TODO: This number (20) can and should change to optimize
+#     arguments = [(region,
+#                   vcf_path,
+#                   ref_fasta,
+#                   kmer_length,
+#                   singletons,
+#                   nsingletons) for region in regions]
+#     pool = mp.Pool(nprocs)
+#     results = [result.get() for result in [pool.starmap_async(process_region, arguments)]]
+#     pool.close()
+#     pool.join()
+#     return results[0]
 
 
 def merge_transitions_ddc(dict_list, outfile=None):
@@ -454,27 +454,27 @@ def count_regional_AF(vcf_region):
     return AF, AC, AN
 
 
-def query_region(vcf_path, fasta, chrom, kmer_size, bins=100, counts_path=None):
-    # TODO: Add window size!!!
-    vcf = VCF(vcf_path)
-    fasta = Fasta(fasta)
-    regions = get_split_chrom_vcf(vcf_path, chrom, bins)
-    window = KmerWindow(kmer_size, counts_path=counts_path)
-    print('region\tactual\texpected\tratio', flush=True)
-    expected, actual = [], []
-    for r in regions:
-        try:
-            exp = window.calculate_expected(str(fasta.get_seq(r.chrom, r.start, r.stop)))
-        except (KeyError, FetchError):
-            exp = 0
-        all_vars, singletons = count_regional_variants(vcf(str(r)))
-        expected.append(exp)
-        actual.append(singletons)
-        if exp == 0:
-            ratio = 0
-        else:
-            ratio = singletons / exp
-        print("%s\t%d\t%f\t%f" % (str(r), all_vars, exp, ratio), flush=True)
+# def query_region(vcf_path, fasta, chrom, kmer_size, bins=100, counts_path=None):
+#     # TODO: Add window size!!!
+#     vcf = VCF(vcf_path)
+#     fasta = Fasta(fasta)
+#     regions = get_split_chrom_vcf(vcf_path, chrom, bins)
+#     window = KmerWindow(kmer_size, counts_path=counts_path)
+#     print('region\tactual\texpected\tratio', flush=True)
+#     expected, actual = [], []
+#     for r in regions:
+#         try:
+#             exp = window.calculate_expected(str(fasta.get_seq(r.chrom, r.start, r.stop)))
+#         except (KeyError, FetchError):
+#             exp = 0
+#         all_vars, singletons = count_regional_variants(vcf(str(r)))
+#         expected.append(exp)
+#         actual.append(singletons)
+#         if exp == 0:
+#             ratio = 0
+#         else:
+#             ratio = singletons / exp
+#         print("%s\t%d\t%f\t%f" % (str(r), all_vars, exp, ratio), flush=True)
 
 
 def query_bed_region(region, vcf_path, fasta, kmer_size, counts_path, count_frequency):

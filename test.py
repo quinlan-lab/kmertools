@@ -96,7 +96,8 @@ def test_check_bed_regions_for_expected_mutations(arguments, test=None):
         ek.check_bed_regions(arguments.bed_path, arguments.vcf_path, arguments.fasta_path, arguments.kmer_size,
                              arguments.nprocs,
                              counts_path=arguments.countspath,
-                             strand_col=arguments.strand_col, bed_names_col=arguments.bed_name_col, singletons=arguments.check_singletons)
+                             strand_col=arguments.strand_col, bed_names_col=arguments.bed_name_col,
+                             singletons=arguments.check_singletons)
     else:
         kmer_size = 7
         # bedpath = '/Users/simonelongo/too_big_for_icloud/merged_exons_grch38.bed'
@@ -145,8 +146,15 @@ def test_chrom_bin_mutability(arguments, test=None):  # vcfpath, fastapath, kmer
     if test is None:
         mut_table = ek.chrom_bin_mutability(arguments.vcf_path, arguments.fasta_path, arguments.kmer_size,
                                             arguments.nbins,
-                                            chroms=arguments.chrom_list, nprocs=int(arguments.nprocs), af=arguments.check_AF)
+                                            chroms=arguments.chrom_list, nprocs=int(arguments.nprocs),
+                                            af=arguments.check_AF)
         mut_table.to_csv('chrom_%sbins_%smers.csv' % (arguments.nbins, arguments.kmer_size))
+    elif arguments.bed_path is not None:
+        mut_table = ek.region_mutability_from_bed(arguments.vcf_path, arguments.fasta_path, arguments.bed_path,
+                                                  arguments.kmer_size,
+                                                  nprocs=int(arguments.nprocs),
+                                                  af=arguments.check_AF)
+        mut_table.to_csv('%s_%smers.csv' % ("".join(arguments.bed_path.split('.')[:-1]), arguments.kmer_size))
     else:
         vcfpath = '/Users/simonelongo/too_big_for_icloud/gnomAD_v3/gnomad.genomes.r3.0.sites.vcf.bgz'
         fastapath = '/Users/simonelongo/too_big_for_icloud/ref_genome/hg38/hg38.fa'
@@ -155,8 +163,16 @@ def test_chrom_bin_mutability(arguments, test=None):  # vcfpath, fastapath, kmer
         chroms = ['chr22']
         numprocs = 6
         AF = True
-        mut_table = ek.chrom_bin_mutability(vcfpath, fastapath, kmer_size, nbins, chroms=chroms, nprocs=numprocs, af=AF)
-        mut_table.to_csv('TEST_chrom_%dbins_%dmers.csv' % (nbins, kmer_size))
+        bedpath = '/Users/simonelongo/Documents/QuinlanLabFiles/kmertools/BINCHROM_TEST.bed'
+        #mut_table = ek.chrom_bin_mutability(vcfpath, fastapath, kmer_size, nbins, chroms=chroms, nprocs=numprocs, af=AF)
+        outname = bedpath.split('/')[-1]
+        mut_table = ek.region_mutability_from_bed(vcfpath, fastapath, bedpath,
+                                                  kmer_size,
+                                                  nprocs=numprocs,
+                                                  af=AF)
+        mut_table.to_csv('%s_%smers.csv' % ("".join(outname.split('.')[:-1]), kmer_size))
+
+        #mut_table.to_csv('TEST_chrom_%dbins_%dmers.csv' % (nbins, kmer_size))
     return
 
 
