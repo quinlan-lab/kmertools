@@ -70,6 +70,10 @@ def test_train_kmer_model(arguments, test=None):
         for k, v, in result.items():
             outfile1 = 'regional_' + str(k) + '_' + str(arguments.kmer_size) + 'mer_count.csv'
             outfile2 = 'regional_transitions_' + str(k) + '_' + str(arguments.kmer_size) + 'mer.csv'
+            if len(v) == 3:
+                outfile2 = 'regional_ACtransitions_' + str(k) + '_' + str(arguments.kmer_size) + 'mer.csv'
+                outfile3 = 'regional_ANtransitions_' + str(k) + '_' + str(arguments.kmer_size) + 'mer.csv'
+                pd.DataFrame.from_dict(v[2], orient='index', columns=list('ACGT')).to_csv(outfile3)
             pd.DataFrame.from_dict(v[0], orient='index').to_csv(outfile1)
             pd.DataFrame.from_dict(v[1], orient='index', columns=list('ACGT')).to_csv(outfile2)
     else:  # Test mode
