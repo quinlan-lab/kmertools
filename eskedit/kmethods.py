@@ -10,7 +10,7 @@ import math
 import pandas as pd
 from pkg_resources import resource_filename
 from pyfaidx import Fasta, FetchError
-
+import datetime
 from eskedit.constants import get_autosome_names_grch38
 from eskedit.kclass import Variant, Kmer, KmerWindow, GRegion
 from eskedit.ksplit import split_seq, get_split_vcf_regions, get_split_chrom_vcf
@@ -588,7 +588,9 @@ def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, count
             bed_names_col = None
     regions = []
     if outfile is None:
-        outfile = '{}mer_expected_mutation_count.dat'.format(kmer_size)
+        outfile = bed_path.split('/')[-1]
+        outfile = "".join(outfile.split('.')[:-1])
+        outfile = '%s_%s.%dmer.dat' % (outfile, str(datetime.date.today()), kmer_size)
     with open(outfile, 'w') as output:
         output.write('%s\t%s\t%s\t%s\t%s\n' % ('Region', field1, field2, field3, field4))
     with open(bed_path, 'r') as bedfile:
