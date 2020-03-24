@@ -513,11 +513,11 @@ def query_bed_region(region, vcf_path, fasta, kmer_size, counts_path, count_freq
             field1 = AC
             field2 = AN
             field3 = AF
-            if exp == 0:
-                field4 = exp
-            else:
-                field4 = exp
-            pass
+            field4 = exp
+            # if exp == 0:
+            #     field4 = exp
+            # else:
+            #     field4 = exp
         else:
             # does not account for strandedness here
             all_vars, observed_variants = count_regional_variants(vcf(str(region)))
@@ -609,7 +609,7 @@ def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, count
     with open(outfile, 'w') as output:
         for result in results.get():
             output.write(result)
-    pass
+    return
 
 
 def is_dash(pdash):
