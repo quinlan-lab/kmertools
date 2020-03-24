@@ -75,9 +75,9 @@ def test_train_kmer_model(arguments, test=None):
     else:  # Test mode
         kmer_size = 3
         # big bed
-        bedpath = '/Users/simonelongo/too_big_for_icloud/merged_exons_grch38.bed'
+        #bedpath = '/Users/simonelongo/too_big_for_icloud/merged_exons_grch38.bed'
         # small bed
-        # bedpath = '/Users/simonelongo/too_big_for_icloud/small_test.bed'
+        bedpath = '/Users/simonelongo/too_big_for_icloud/small_test.bed'
         vcfpath = '/Users/simonelongo/too_big_for_icloud/gnomAD_v3/gnomad.genomes.r3.0.sites.vcf.bgz'
         fastapath = '/Users/simonelongo/too_big_for_icloud/ref_genome/hg38/hg38.fa'
         numprocs = 8
@@ -87,6 +87,10 @@ def test_train_kmer_model(arguments, test=None):
         for k, v in result.items():
             outfile1 = 'TEST_regional_' + str(k) + '_' + str(kmer_size) + 'mer_count.csv'
             outfile2 = 'TEST_regional_transitions_' + str(k) + '_' + str(kmer_size) + 'mer.csv'
+            if len(v) == 3:
+                outfile2 = 'TEST_regional_ACtransitions_' + str(k) + '_' + str(kmer_size) + 'mer.csv'
+                outfile3 = 'TEST_regional_ANtransitions_' + str(k) + '_' + str(kmer_size) + 'mer.csv'
+                pd.DataFrame.from_dict(v[2], orient='index', columns=list('ACGT')).to_csv(outfile3)
             pd.DataFrame.from_dict(v[0], orient='index').to_csv(outfile1)
             pd.DataFrame.from_dict(v[1], orient='index', columns=list('ACGT')).to_csv(outfile2)
 

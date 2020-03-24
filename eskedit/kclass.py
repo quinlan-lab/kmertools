@@ -327,6 +327,8 @@ class DataContainer:
         # self.transitions = defaultdict(lambda: array.array('L', [0, 0, 0, 0]))
         self.transitions = defaultdict(Counter)
         self.idx_nuc = list('ACGT')
+        self.get2 = False
+        self.transitions2 = None
 
     def add_count(self, region_ref_counts):
         for k, v in region_ref_counts.items():
@@ -337,5 +339,16 @@ class DataContainer:
             for ialt, count in enumerate(v):
                 self.transitions[k][self.idx_nuc[ialt]] += count
 
+    def add_transition2(self, trans):
+        if self.transitions2 is None:
+            self.transitions2 = defaultdict(Counter)
+            self.get2 = True
+        for k, v in trans.items():
+            for ialt, count in enumerate(v):
+                self.transitions2[k][self.idx_nuc[ialt]] += count
+
     def get(self):
-        return self.ref_count, self.transitions
+        if self.get2:
+            return self.ref_count, self.transitions, self.transitions2
+        else:
+            return self.ref_count, self.transitions

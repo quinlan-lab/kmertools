@@ -144,7 +144,8 @@ def model_region_nonsingletons(data_container, vcf_path, fasta_path, kmer_size, 
         return
     region_ref_counts = ek.kmer_search(sequence, kmer_size)  # nprocs=1 due to short region
     r_string = str(region.chrom) + ':' + str(region.start) + '-' + str(region.stop)
-    transitions = defaultdict(lambda: array.array('d', [0, 0, 0, 0]))
+    ac_transitions = defaultdict(lambda: array.array('L', [0, 0, 0, 0]))
+    an_transitions = defaultdict(lambda: array.array('L', [0, 0, 0, 0]))
     # Define indices for nucleotides
     nuc_idx = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
     idx_nuc = list('ACGT')
@@ -156,7 +157,8 @@ def model_region_nonsingletons(data_container, vcf_path, fasta_path, kmer_size, 
                 print('WARNING: Reference mismatch\tFasta REF: %s\tVCF REF: %s' % (adj_seq[kmer_mid_idx], variant.REF),
                       file=sys.stderr, flush=True)
             if ek.complete_sequence(adj_seq):
-                transitions[adj_seq.upper()][nuc_idx[new_var.ALT[0]]] += new_var.wAF
+                ac_transitions[adj_seq.upper()][nuc_idx[new_var.ALT[0]]] += new_var.AC
+                an_transitions[adj_seq.upper()][nuc_idx[new_var.ALT[0]]] += new_var.AN
         # if ek.is_singleton_snv(variant):
         #     new_var = Variant(variant=variant, fields=['vep'])
         #     # take 7mer around variant. pyfaidx excludes start index and includes end index
@@ -167,7 +169,8 @@ def model_region_nonsingletons(data_container, vcf_path, fasta_path, kmer_size, 
         #         transitions[adj_seq.upper()][nuc_idx[new_var.ALT[0]]] += 1
     temp = data_container.get()
     temp.add_count(region_ref_counts)
-    temp.add_transition(transitions)
+    temp.add_transition(ac_transitions)
+    temp.add_transition2(an_transitions)
     data_container.set(temp)
     print('Finished region %s in %s' % (str(region), str(time.time() - start)), flush=True)
     return
