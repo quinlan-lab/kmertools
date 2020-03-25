@@ -78,7 +78,7 @@ def process_chrom_bin(region, kmer_size, vcf_path, fasta_path, AF=False):
         return region, None
 
 
-def process_bed_region(region, kmer_size, vcf_path, fasta_path, AF=False):
+def process_bed_region(region, kmer_size, vcf_path, fasta_path, AF=False, delim=','):
     start = time.time()
     fasta = Fasta(fasta_path)
     vcf = VCF(vcf_path)
@@ -88,11 +88,13 @@ def process_bed_region(region, kmer_size, vcf_path, fasta_path, AF=False):
         # sequence = fasta.get_seq(region.chrom, region.start, region.stop).seq.upper()
         if region.strand is not None:
             if ek.is_dash(region.strand):
-                sequence = fasta.get_seq(region.chrom, region.start-kmer_mid_idx, region.stop+kmer_mid_idx).complement.seq.upper()
+                sequence = fasta.get_seq(region.chrom, region.start - kmer_mid_idx,
+                                         region.stop + kmer_mid_idx).complement.seq.upper()
             else:
-                sequence = fasta.get_seq(region.chrom, region.start-kmer_mid_idx, region.stop+kmer_mid_idx).seq.upper()
+                sequence = fasta.get_seq(region.chrom, region.start - kmer_mid_idx,
+                                         region.stop + kmer_mid_idx).seq.upper()
         else:
-            sequence = fasta.get_seq(region.chrom, region.start-kmer_mid_idx, region.stop+kmer_mid_idx).seq.upper()
+            sequence = fasta.get_seq(region.chrom, region.start - kmer_mid_idx, region.stop + kmer_mid_idx).seq.upper()
     except (KeyError, FetchError):
         print('Region %s not found in fasta, continuing...' % str(region), file=sys.stderr)
         return
@@ -130,11 +132,31 @@ def process_bed_region(region, kmer_size, vcf_path, fasta_path, AF=False):
         kmer_freq['freq'] = kmer_freq.tot / kmer_freq.counts
         kmer_freq.loc['GC_content', 'freq'] = gc_content
         kmer_freq.loc['N_count', 'freq'] = n_count
-        print('Finished region %s in %s' % (region.str_name(), str(time.time() - start)), flush=True)
-        return region, kmer_freq['freq'].to_dict()
+        kdict = kmer_freq['freq'].to_dict()
+        # kmer_freq.sort_index(inplace=True)
+        # print('Finished region %s in %s' % (region.str_name(), str(time.time() - start)), flush=True)
+        outstring = region.str_name() + delim
+        kkeys = ek.generate_kmers(kmer_size)
+        kkeys.append('GC_content')
+        kkeys.append('N_count')
+        for i, k in enumerate(kkeys):
+            try:
+                outstring = outstring + str(kmer_freq.loc[k, 'freq'])
+            except KeyError:
+                outstring = outstring + '0'
+            if (i + 1) < len(kkeys):
+                outstring = outstring + delim
+        print(outstring, flush=True)
+        # return region, kmer_freq['freq'].to_dict()
     else:
-        print('Finished region %s in %s' % (region.str_name(), str(time.time() - start)), flush=True)
-        return region, None
+        # print('Finished region %s in %s' % (region.str_name(), str(time.time() - start)), flush=True)
+        outstring = region.str_name() + delim
+        for i in range(kmer_size ** 4):
+            outstring = outstring + '0'
+            if (i + 1) < kmer_size ** 4:
+                outstring = outstring + delim
+        print(outstring, flush=True)
+        # return region, None
 
 
 def chrom_bin_mutability(vcfpath, fastapath, kmer_size, nbins, chroms=None, nprocs=1, af=False):
@@ -183,27 +205,36 @@ def chrom_bin_mutability(vcfpath, fastapath, kmer_size, nbins, chroms=None, npro
 
 
 def region_mutability_from_bed(vcfpath, fastapath, bed_path, kmer_size, nprocs=1, af=False):
+    delim = ','
     default_idx = 'A' * kmer_size
     regions = ek.get_bed_regions(bed_path, invert_selection=False, header=False, clean_bed=True, strand_col=5,
                                  bed_names_col=3)
+
+    headers = ek.generate_kmers(kmer_size)
+    headstr = delim
+    for i, k in enumerate(headers):
+        headstr = headstr + str(k)
+        if (i + 1) < len(headers):
+            headstr = headstr + delim
+    print(headstr, flush=True)
     pool = mp.Pool(nprocs)
     arguments = [(region, kmer_size, vcfpath, fastapath, af) for region in regions]
     results = pool.starmap(process_bed_region, arguments)
     pool.close()
     pool.join()
     genome_df = pd.DataFrame()
-    for res in results:
-        region, freq = res
-        if freq is not None:
-            freq_df = pd.DataFrame.from_dict(freq, orient='index', columns=[region.str_name()])
-        else:
-            freq_df = pd.DataFrame({region.str_name(): [0]}, index=[default_idx])
-        genome_df = pd.concat([genome_df, freq_df], axis=1, sort=True)
-    # multiindex = pd.MultiIndex.from_tuples([(s.split(':')[0], s.split(':')[1]) for s in genome_df.columns.to_list()],
-    # names=['chrom', 'position'])
-    # genome_df.columns = multiindex
-    genome_df.fillna(0, inplace=True)
-    return genome_df
+    # for res in results:
+    #     region, freq = res
+    #     if freq is not None:
+    #         freq_df = pd.DataFrame.from_dict(freq, orient='index', columns=[region.str_name()])
+    #     else:
+    #         freq_df = pd.DataFrame({region.str_name(): [0]}, index=[default_idx])
+    #     genome_df = pd.concat([genome_df, freq_df], axis=1, sort=True)
+    # # multiindex = pd.MultiIndex.from_tuples([(s.split(':')[0], s.split(':')[1]) for s in genome_df.columns.to_list()],
+    # # names=['chrom', 'position'])
+    # # genome_df.columns = multiindex
+    # genome_df.fillna(0, inplace=True)
+    return  # genome_df
 
 
 if __name__ == "__main__":

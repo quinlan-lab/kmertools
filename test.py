@@ -88,7 +88,7 @@ def test_chrom_bin_mutability(arguments, test=None):  # vcfpath, fastapath, kmer
                                                   arguments.kmer_size,
                                                   nprocs=int(arguments.nprocs),
                                                   af=arguments.check_AF)
-        mut_table.to_csv('%s_%smers.csv' % ("".join(arguments.bed_path.split('.')[:-1]), arguments.kmer_size))
+        #mut_table.to_csv('%s_%smers.csv' % ("".join(arguments.bed_path.split('.')[:-1]), arguments.kmer_size))
     # TEST Below
     else:
         vcfpath = '/Users/simonelongo/too_big_for_icloud/gnomAD_v3/gnomad.genomes.r3.0.sites.vcf.bgz'
@@ -105,7 +105,7 @@ def test_chrom_bin_mutability(arguments, test=None):  # vcfpath, fastapath, kmer
                                                   kmer_size,
                                                   nprocs=numprocs,
                                                   af=AF)
-        mut_table.to_csv('%s_%smers.csv' % ("".join(outname.split('.')[:-1]), kmer_size))
+        #mut_table.to_csv('%s_%smers.csv' % ("".join(outname.split('.')[:-1]), kmer_size))
 
         # mut_table.to_csv('TEST_chrom_%dbins_%dmers.csv' % (nbins, kmer_size))
     return
