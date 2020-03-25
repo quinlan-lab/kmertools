@@ -12,54 +12,6 @@ def sigint_handler(signal_received, frame):
 
 
 def test_train_kmer_model(arguments, test=None):
-    # if len(arguments) == 5:
-    #     kmer_size = int(arguments[0])
-    #     bedpath = arguments[1]
-    #     vcfpath = arguments[2]
-    #     fastapath = arguments[3]
-    #     numprocs = int(arguments[4])
-    #     invert_bed_selection = False
-    #     bednames = None
-    #     strand = None
-    # elif len(arguments) == 8:
-    #     kmer_size = int(arguments[0])
-    #     bedpath = arguments[1]
-    #     vcfpath = arguments[2]
-    #     fastapath = arguments[3]
-    #     numprocs = int(arguments[4])
-    #     invert_bed_selection = bool(arguments[5])
-    #     try:
-    #         strand = int(arguments[6])
-    #     except TypeError:
-    #         strand = None
-    #     try:
-    #         bednames = int(arguments[7])
-    #     except TypeError:
-    #         bednames = None
-    # elif len(arguments) == 1:
-    #     kmer_size = 3
-    #     # big bed
-    #     # bedpath = '/Users/simonelongo/too_big_for_icloud/merged_exons_grch38.bed'
-    #     # small bed
-    #     bedpath = '/Users/simonelongo/too_big_for_icloud/small_test.bed'
-    #     vcfpath = '/Users/simonelongo/too_big_for_icloud/gnomAD_v3/gnomad.genomes.r3.0.sites.vcf.bgz'
-    #     fastapath = '/Users/simonelongo/too_big_for_icloud/ref_genome/hg38/hg38.fa'
-    #     numprocs = 1
-    #     invert_bed_selection = False
-    #     strand = None
-    #     bednames = None
-    # else:
-    #     return
-    #     print("""Please enter arguments in this order:
-    #                 1. kmer size
-    #                 2. path to bed file
-    #                 3. path to vcf file
-    #                 4. path to reference fasta file
-    #                 5. number of processors to use
-    #                 6. invert bed selection (True/False)
-    #             """)
-    #     exit(1)
-
     if test is None:
         result = ek.train_kmer_model(arguments.bed_path, arguments.vcf_path, arguments.fasta_path, arguments.kmer_size,
                                      nprocs=arguments.nprocs,
@@ -79,7 +31,7 @@ def test_train_kmer_model(arguments, test=None):
     else:  # Test mode
         kmer_size = 3
         # big bed
-        #bedpath = '/Users/simonelongo/too_big_for_icloud/merged_exons_grch38.bed'
+        # bedpath = '/Users/simonelongo/too_big_for_icloud/merged_exons_grch38.bed'
         # small bed
         bedpath = '/Users/simonelongo/too_big_for_icloud/small_test.bed'
         vcfpath = '/Users/simonelongo/too_big_for_icloud/gnomAD_v3/gnomad.genomes.r3.0.sites.vcf.bgz'
@@ -97,6 +49,7 @@ def test_train_kmer_model(arguments, test=None):
                 pd.DataFrame.from_dict(v[2], orient='index', columns=list('ACGT')).to_csv(outfile3)
             pd.DataFrame.from_dict(v[0], orient='index').to_csv(outfile1)
             pd.DataFrame.from_dict(v[1], orient='index', columns=list('ACGT')).to_csv(outfile2)
+    return
 
 
 def test_check_bed_regions_for_expected_mutations(arguments, test=None):
@@ -119,35 +72,8 @@ def test_check_bed_regions_for_expected_mutations(arguments, test=None):
         bednames = 3
         ek.check_bed_regions(bedpath, vcfpath, fastapath, kmer_size, numprocs, counts_path=countspath,
                              strand_col=strand, bed_names_col=bednames, singletons=False)
-    # elif len(arguments) == 8:
-    #     kmer_size = int(arguments[0])
-    #     bedpath = arguments[1]
-    #     vcfpath = arguments[2]
-    #     fastapath = arguments[3]
-    #     countspath = arguments[4]
-    #     numprocs = int(arguments[5])
-    #     try:
-    #         strand = int(arguments[6])
-    #     except TypeError:
-    #         strand = None
-    #     try:
-    #         bednames = int(arguments[7])
-    #     except TypeError:
-    #         bednames = None
-    # else:
-    #     print("""Please enter arguments in this order:
-    #         1. kmer size
-    #         2. path to bed file
-    #         3. path to vcf file
-    #         4. path to reference fasta file
-    #         5. path to counts file
-    #         6. number of processors to use
-    #     """)
-    #     exit(1)
-    # print('Querying regions for %d-mers using %d processsors\n' % (kmer_size, numprocs))
-    # ek.check_bed_regions(bedpath, vcfpath, fastapath, kmer_size, numprocs, counts_path=countspath, strand_col=strand,
-    #                      bed_names_col=bednames)
-    pass
+
+    return
 
 
 def test_chrom_bin_mutability(arguments, test=None):  # vcfpath, fastapath, kmer_size, nbins, chroms=None, numprocs=1):
@@ -157,12 +83,13 @@ def test_chrom_bin_mutability(arguments, test=None):  # vcfpath, fastapath, kmer
                                             chroms=arguments.chrom_list, nprocs=int(arguments.nprocs),
                                             af=arguments.check_AF)
         mut_table.to_csv('chrom_%sbins_%smers.csv' % (arguments.nbins, arguments.kmer_size))
-    elif arguments.bed_path is not None:
+    elif arguments.bed_path is not None and test is None:
         mut_table = ek.region_mutability_from_bed(arguments.vcf_path, arguments.fasta_path, arguments.bed_path,
                                                   arguments.kmer_size,
                                                   nprocs=int(arguments.nprocs),
                                                   af=arguments.check_AF)
         mut_table.to_csv('%s_%smers.csv' % ("".join(arguments.bed_path.split('.')[:-1]), arguments.kmer_size))
+    # TEST Below
     else:
         vcfpath = '/Users/simonelongo/too_big_for_icloud/gnomAD_v3/gnomad.genomes.r3.0.sites.vcf.bgz'
         fastapath = '/Users/simonelongo/too_big_for_icloud/ref_genome/hg38/hg38.fa'
@@ -172,7 +99,7 @@ def test_chrom_bin_mutability(arguments, test=None):  # vcfpath, fastapath, kmer
         numprocs = 6
         AF = True
         bedpath = '/Users/simonelongo/Documents/QuinlanLabFiles/kmertools/BINCHROM_TEST.bed'
-        #mut_table = ek.chrom_bin_mutability(vcfpath, fastapath, kmer_size, nbins, chroms=chroms, nprocs=numprocs, af=AF)
+        # mut_table = ek.chrom_bin_mutability(vcfpath, fastapath, kmer_size, nbins, chroms=chroms, nprocs=numprocs, af=AF)
         outname = bedpath.split('/')[-1]
         mut_table = ek.region_mutability_from_bed(vcfpath, fastapath, bedpath,
                                                   kmer_size,
@@ -180,7 +107,7 @@ def test_chrom_bin_mutability(arguments, test=None):  # vcfpath, fastapath, kmer
                                                   af=AF)
         mut_table.to_csv('%s_%smers.csv' % ("".join(outname.split('.')[:-1]), kmer_size))
 
-        #mut_table.to_csv('TEST_chrom_%dbins_%dmers.csv' % (nbins, kmer_size))
+        # mut_table.to_csv('TEST_chrom_%dbins_%dmers.csv' % (nbins, kmer_size))
     return
 
 
@@ -199,11 +126,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='ESKeDiT',
                                      usage="Execute functions with subcommands:\n$ python3 test.py <COMMAND> -[ARGUMENTS]\n\n$ python3 test.py query -k 3 -b bedfile.bed -v variants.vcf -f hg38.fa -N 32\n\n")
     parser.add_argument('command', choices=FUNCTION_MAP.keys())
-    # parser.add_argument('--query', action='store_true', help='Query regions specified in bedfile for an expected number of mutations based on provided counts data.')
-    # parser.add_argument('--train', action='store_true', help='Build a counts table based on a k-mer model')
-    # parser.add_argument('--loctest', action='store_true')
     parser.add_argument('--version', action='version', version='%s %s' % ('ESKeDiT', ek.VERSION))
-    parser.add_argument('--test', action='store_true', dest='loctest', help='Run local test. NOTE: THIS WILL NOT WORK!')
+    parser.add_argument('--test', action='store_true', dest='loctest', help=argparse.SUPPRESS)
     parser.add_argument('--kmer_size', '-k', action='store', dest='kmer_size', help='Length of k-mer motif')
     parser.add_argument('--bedpath', '-b', action='store', dest='bed_path',
                         help='Path to bed file containing genomic regions')

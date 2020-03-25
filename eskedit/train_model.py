@@ -81,11 +81,11 @@ def model_region_singletons(data_container, vcf_path, fasta_path, kmer_size, reg
     try:
         if region.strand is not None:
             if ek.is_dash(region.strand):
-                sequence = fasta.get_seq(region.chrom, region.start, region.stop).complement.seq.upper()
+                sequence = fasta.get_seq(region.chrom, region.start-kmer_mid_idx, region.stop+kmer_mid_idx).complement.seq.upper()
             else:
-                sequence = fasta.get_seq(region.chrom, region.start, region.stop).seq.upper()
+                sequence = fasta.get_seq(region.chrom, region.start-kmer_mid_idx, region.stop+kmer_mid_idx).seq.upper()
         else:
-            sequence = fasta.get_seq(region.chrom, region.start, region.stop).seq.upper()
+            sequence = fasta.get_seq(region.chrom, region.start-kmer_mid_idx, region.stop+kmer_mid_idx).seq.upper()
     except (KeyError, FetchError):
         print('Region %s not found in fasta, continuing...' % str(region), file=sys.stderr, flush=True)
         return
@@ -134,11 +134,11 @@ def model_region_nonsingletons(data_container, vcf_path, fasta_path, kmer_size, 
     try:
         if region.strand is not None:
             if ek.is_dash(region.strand):
-                sequence = fasta.get_seq(region.chrom, region.start, region.stop).complement.seq.upper()
+                sequence = fasta.get_seq(region.chrom, region.start-kmer_mid_idx, region.stop+kmer_mid_idx).complement.seq.upper()
             else:
-                sequence = fasta.get_seq(region.chrom, region.start, region.stop).seq.upper()
+                sequence = fasta.get_seq(region.chrom, region.start-kmer_mid_idx, region.stop+kmer_mid_idx).seq.upper()
         else:
-            sequence = fasta.get_seq(region.chrom, region.start, region.stop).seq.upper()
+            sequence = fasta.get_seq(region.chrom, region.start-kmer_mid_idx, region.stop+kmer_mid_idx).seq.upper()
     except (KeyError, FetchError):
         print('Region %s not found in fasta, continuing...' % str(region), file=sys.stderr, flush=True)
         return
