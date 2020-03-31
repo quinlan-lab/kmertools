@@ -110,9 +110,9 @@ def query_bed_region(region, vcf_path, fasta, kmer_size, singleton_path, af_path
         str(field8), str(field9))
 
 
-def check_bed_regions(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, singleton_path=None, af_path=None,
-                      an_path=None, ac_path=None, outfile=None,
-                      strand_col=None, bed_names_col=None):
+def kquery(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, singleton_path=None, af_path=None,
+           an_path=None, ac_path=None, outfile=None,
+           strand_col=None, bed_names_col=None):
     field1 = 'NumSNVs'
     field2 = 'Singletons'
     field3 = 'AC'
@@ -197,5 +197,5 @@ if __name__ == "__main__":
     bedpath = '/Users/simonelongo/Documents/QuinlanLabFiles/kmertools/QUERY_TEST_1klines.bed'
     vcfpath = '/Users/simonelongo/too_big_for_icloud/gnomAD_v3/gnomad.genomes.r3.0.sites.vcf.bgz'
     fastapath = '/Users/simonelongo/too_big_for_icloud/ref_genome/hg38/hg38.fa'
-    check_bed_regions(bedpath, vcfpath, fastapath, 7, nprocs=12, strand_col=5, bed_names_col=3,
-                      outfile='QUERY_TEST_RUN1.dat')
+    kquery(bedpath, vcfpath, fastapath, 7, nprocs=12, strand_col=5, bed_names_col=3,
+           outfile='QUERY_TEST_RUN1.dat')

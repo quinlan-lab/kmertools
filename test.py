@@ -56,27 +56,31 @@ def test_train_kmer_model(arguments, test=None):
 
 def test_check_bed_regions_for_expected_mutations(arguments, test=None):
     if test is None:
-        ek.check_bed_regions(arguments.bed_path, arguments.vcf_path, arguments.fasta_path, arguments.kmer_size,
-                             arguments.nprocs,
-                             counts_path=arguments.countspath,
-                             strand_col=arguments.strand_col, bed_names_col=arguments.bed_name_col,
-                             singletons=arguments.check_singletons)
+        ek.kquery(arguments.bed_path, arguments.vcf_path, arguments.fasta_path, arguments.kmer_size,
+                  nprocs=arguments.nprocs,
+                  strand_col=arguments.strand_col, bed_names_col=arguments.bed_name_col)
     else:
         kmer_size = 7
         # bedpath = '/Users/simonelongo/too_big_for_icloud/merged_exons_grch38.bed'
         # bedpath = '/Users/simonelongo/Downloads/3primeUTR.refseq.grch38.hg38.bed'
-        bedpath = '/Users/simonelongo/Downloads/hg38-tRNAs/hg38-tRNAs.bed'
+        # bedpath = '/Users/simonelongo/Downloads/hg38-tRNAs/hg38-tRNAs.bed'
+        bedpath = '/Users/simonelongo/Documents/QuinlanLabFiles/kmertools/QUERY_TEST_100lines.bed'
         vcfpath = '/Users/simonelongo/too_big_for_icloud/gnomAD_v3/gnomad.genomes.r3.0.sites.vcf.bgz'
         fastapath = '/Users/simonelongo/too_big_for_icloud/ref_genome/hg38/hg38.fa'
         numprocs = 6
-        countspath = '/Users/simonelongo/Documents/QuinlanLabFiles/kmertools/input_data/counts_data/7mer_relative_freq_noncoding.csv'
+        countspath = None
         strand = 5
         bednames = 3
-        ek.check_bed_regions(bedpath, vcfpath, fastapath, kmer_size, numprocs, counts_path=countspath,
-                             strand_col=strand, bed_names_col=bednames, singletons=False)
+        # kquery(bedpath, vcfpath, fastapath, 7, nprocs=12, strand_col=5, bed_names_col=3,
+        #        outfile='QUERY_TEST_RUN1.dat')
+        ek.kquery(bedpath, vcfpath, fastapath, kmer_size, numprocs, strand_col=strand, bed_names_col=bednames)
 
     return
 
+
+# def kquery(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, singleton_path=None, af_path=None,
+#            an_path=None, ac_path=None, outfile=None,
+#            strand_col=None, bed_names_col=None):
 
 def test_chrom_bin_mutability(arguments, test=None):  # vcfpath, fastapath, kmer_size, nbins, chroms=None, numprocs=1):
     if test is None and arguments.bed_path is None:
@@ -157,13 +161,13 @@ if __name__ == "__main__":
     parser.add_argument('--nbins', action='store', dest='nbins', help='Number of bins to split each chromosome into')
     parser.add_argument('--chrom_list', action='store', dest='chrom_list',
                         help='Comma-separated list of chromosomes to evaluate (eg. \'--chrom_list chr1,chr2,chr3\'). Default is all autosomes.')
-    parser.add_argument('--nprocs', '-N', action='store', dest='nprocs', default=1,
+    parser.add_argument('--threads', '-@', action='store', dest='nprocs', default=1,
                         help='Number of processes to use (default=1)')
     parser.add_argument('--invert', action='store_true',
                         help='If flag is present, will invert regions given in bed file.')
     parser.add_argument('--strand', '-S', nargs='?', const=5, type=int, dest='strand_col',
                         help='Enter (zero-based) integer value of column in bed file with strand information if it\'s not 5')
-    parser.add_argument('--bed_names', nargs='?', const=3, type=int, dest='bed_name_col',
+    parser.add_argument('-L', '--bed_names', nargs='?', const=3, type=int, dest='bed_name_col',
                         help='Enter (zero-based) integer value of column in bed file with region/gene name information')
     parser.add_argument('--singletons', action='store_true', dest='check_singletons')
     parser.add_argument('--AF', action='store_true', dest='check_AF')

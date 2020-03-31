@@ -6,3 +6,4 @@ from eskedit.kclass import *
 from eskedit.train_model import *
 from eskedit.chrom_binning import *
 from eskedit.ktrain import train_kmer_model
+from eskedit.query import kquery
