@@ -151,9 +151,9 @@ def process_bed_region(region, kmer_size, vcf_path, fasta_path, AF=False, delim=
     else:
         # print('Finished region %s in %s' % (region.str_name(), str(time.time() - start)), flush=True)
         outstring = region.str_name() + delim
-        for i in range(kmer_size ** 4):
+        for i in range((kmer_size ** 4) + 2):
             outstring = outstring + '0'
-            if (i + 1) < kmer_size ** 4:
+            if (i + 1) < ((kmer_size ** 4) + 2):
                 outstring = outstring + delim
         print(outstring, flush=True)
         # return region, None
@@ -211,6 +211,8 @@ def region_mutability_from_bed(vcfpath, fastapath, bed_path, kmer_size, nprocs=1
                                  bed_names_col=3)
 
     headers = ek.generate_kmers(kmer_size)
+    headers.append('GC_content')
+    headers.append('N_count')
     headstr = delim
     for i, k in enumerate(headers):
         headstr = headstr + str(k)
@@ -222,7 +224,7 @@ def region_mutability_from_bed(vcfpath, fastapath, bed_path, kmer_size, nprocs=1
     results = pool.starmap(process_bed_region, arguments)
     pool.close()
     pool.join()
-    genome_df = pd.DataFrame()
+    # genome_df = pd.DataFrame()
     # for res in results:
     #     region, freq = res
     #     if freq is not None:

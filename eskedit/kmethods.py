@@ -302,16 +302,24 @@ def file_len(fname):
     return i + 1
 
 
-def get_counts_dict(kmer_size, alt_path=None):
-    if alt_path is None:
-        filepath = resource_filename('eskedit',
-                                     '../input_data/counts_data/{}mer_relative_mutation_freq_v3.csv'.format(kmer_size))
-        # path = './input_data/counts_data/{}mer_relative_mutation_freq_v3.csv'.format(kmer_size)
-    else:
-        filepath = alt_path
-    df = pd.read_csv(filepath, index_col=0)
+def get_counts_from_file(filepath):
+    if filepath is None:
+        print('ERROR: No input file detected.', file=sys.stderr, flush=True)
+        exit(1)
+    countsdf = pd.read_csv(filepath, index_col=0)
     # df['probability'] = df.iloc[:, :4].apply
-    return dict(zip(df.index, df.iloc[:, 0]))
+    return dict(zip(countsdf.index, countsdf.iloc[:, 0]))
+
+
+def get_counts_dict(kmer_size, name):
+    try:
+        filepath = resource_filename('eskedit',
+                                     '../input_data/counts_data/{}mer_{}_table.csv'.format(kmer_size, name))
+        countsdf = pd.read_csv(filepath, index_col=0)
+        # df['probability'] = df.iloc[:, :4].apply
+        return dict(zip(countsdf.index, countsdf.iloc[:, 0]))
+    except FileNotFoundError:
+        return None
 
 
 def count_regional_variants(vcf_region):
@@ -341,29 +349,6 @@ def count_regional_AF(vcf_region):
                 AN = 0
                 print("ERROR: casting AC, AF, or AN in %s" % (str(vcf_region)), file=sys.stderr, flush=True)
     return AF, AC, AN
-
-
-# def query_region(vcf_path, fasta, chrom, kmer_size, bins=100, counts_path=None):
-#     # TODO: Add window size!!!
-#     vcf = VCF(vcf_path)
-#     fasta = Fasta(fasta)
-#     regions = get_split_chrom_vcf(vcf_path, chrom, bins)
-#     window = KmerWindow(kmer_size, counts_path=counts_path)
-#     print('region\tactual\texpected\tratio', flush=True)
-#     expected, actual = [], []
-#     for r in regions:
-#         try:
-#             exp = window.calculate_expected(str(fasta.get_seq(r.chrom, r.start, r.stop)))
-#         except (KeyError, FetchError):
-#             exp = 0
-#         all_vars, singletons = count_regional_variants(vcf(str(r)))
-#         expected.append(exp)
-#         actual.append(singletons)
-#         if exp == 0:
-#             ratio = 0
-#         else:
-#             ratio = singletons / exp
-#         print("%s\t%d\t%f\t%f" % (str(r), all_vars, exp, ratio), flush=True)
 
 
 def query_bed_region(region, vcf_path, fasta, kmer_size, counts_path, count_frequency):
@@ -528,6 +513,27 @@ def check_clinvar(vcf_path, fasta_path, kmer_size, left_context=0, right_context
         clinvar.append((variant.CHROM, variant.POS, variant.INFO.get("CLNSIG"),
                         window.calculate_expected(seq), seq))
     return clinvar
+
+
+def generate_frequency_table(reference_counts, transition_counts, filepath=False, save_file=None):
+    if filepath:
+        counts = pd.read_csv(reference_counts, index_col=0).sort_index()
+        transitions = pd.read_csv(transition_counts, index_col=0).sort_index()
+    else:
+        counts = pd.DataFrame.from_dict(reference_counts, orient='index').sort_index()
+        transitions = pd.DataFrame.from_dict(transition_counts, orient='index').sort_index()
+    freq_table = pd.DataFrame()
+    counts.fillna(0, inplace=True)
+    transitions.fillna(0, inplace=True)
+    if counts.shape[0] != transitions.shape[0]:
+        raise ValueError(
+            'The reference counts (read %d rows) and transition counts (read %d rows) must have the same number of rows' % (
+                counts.shape[0], transitions.shape[0]))
+    freq_table['frequency'] = transitions.sum(axis=1)
+    freq_table['frequency'] = freq_table['frequency'] / counts.iloc[:, 0]
+    if save_file is not None:
+        freq_table.to_csv(save_file)
+    return freq_table
 
 
 if __name__ == "__main__":

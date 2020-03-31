@@ -106,7 +106,7 @@ def model_region_singletons(data_container, vcf_path, fasta_path, kmer_size, reg
             if ek.complete_sequence(adj_seq):
                 transitions[adj_seq.upper()][nuc_idx[new_var.ALT[0]]] += 1
     temp = data_container.get()
-    temp.add_count(region_ref_counts)
+    temp.add_kmer_counts(region_ref_counts)
     temp.add_transition(transitions)
     data_container.set(temp)
     print('Finished region %s in %s' % (str(region), str(time.time() - start)), flush=True)
@@ -168,7 +168,7 @@ def model_region_nonsingletons(data_container, vcf_path, fasta_path, kmer_size, 
         #     if ek.complete_sequence(adj_seq):
         #         transitions[adj_seq.upper()][nuc_idx[new_var.ALT[0]]] += 1
     temp = data_container.get()
-    temp.add_count(region_ref_counts)
+    temp.add_kmer_counts(region_ref_counts)
     temp.add_transition(ac_transitions)
     temp.add_transition2(an_transitions)
     data_container.set(temp)
@@ -176,7 +176,7 @@ def model_region_nonsingletons(data_container, vcf_path, fasta_path, kmer_size, 
     return
 
 
-def train_kmer_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=1, invert_selection=True,
+def OLDtrain_kmer_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=1, invert_selection=True,
                      clean_bed=False, singletons=False, nonsingletons=False,
                      header=False, strand_col=None, bed_names_col=None, AC_cutoff=None):
     """

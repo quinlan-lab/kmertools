@@ -2,13 +2,15 @@ import eskedit as ek
 import sys
 import pandas as pd
 import argparse
-from signal import signal, SIGINT
 import time
 
 
-def sigint_handler(signal_received, frame):
-    # print('SIGINT or CTRL-C detected. Exiting gracefully')
-    exit(0)
+# from signal import signal, SIGINT
+#
+#
+# def sigint_handler(signal_received, frame):
+#     # print('SIGINT or CTRL-C detected. Exiting gracefully')
+#     exit(0)
 
 
 def test_train_kmer_model(arguments, test=None):
@@ -88,7 +90,7 @@ def test_chrom_bin_mutability(arguments, test=None):  # vcfpath, fastapath, kmer
                                                   arguments.kmer_size,
                                                   nprocs=int(arguments.nprocs),
                                                   af=arguments.check_AF)
-        #mut_table.to_csv('%s_%smers.csv' % ("".join(arguments.bed_path.split('.')[:-1]), arguments.kmer_size))
+        # mut_table.to_csv('%s_%smers.csv' % ("".join(arguments.bed_path.split('.')[:-1]), arguments.kmer_size))
     # TEST Below
     else:
         vcfpath = '/Users/simonelongo/too_big_for_icloud/gnomAD_v3/gnomad.genomes.r3.0.sites.vcf.bgz'
@@ -105,21 +107,38 @@ def test_chrom_bin_mutability(arguments, test=None):  # vcfpath, fastapath, kmer
                                                   kmer_size,
                                                   nprocs=numprocs,
                                                   af=AF)
-        #mut_table.to_csv('%s_%smers.csv' % ("".join(outname.split('.')[:-1]), kmer_size))
+        # mut_table.to_csv('%s_%smers.csv' % ("".join(outname.split('.')[:-1]), kmer_size))
 
         # mut_table.to_csv('TEST_chrom_%dbins_%dmers.csv' % (nbins, kmer_size))
     return
 
 
+def test_ktrain(arguments, test=None):
+    if test is None:
+        # run regular
+        ek.train_kmer_model(arguments.bed_path, arguments.vcf_path, arguments.fasta_path,
+                            int(arguments.kmer_size), nprocs=arguments.nprocs,
+                            strand_col=arguments.strand_col, bed_names_col=arguments.bed_name_col)
+    else:
+        # runtest
+        bedpath = '/Users/simonelongo/Documents/QuinlanLabFiles/kmertools/QUERY_TEST_100lines.bed'
+        vcfpath = '/Users/simonelongo/too_big_for_icloud/gnomAD_v3/gnomad.genomes.r3.0.sites.vcf.bgz'
+        fastapath = '/Users/simonelongo/too_big_for_icloud/ref_genome/hg38/hg38.fa'
+        ksize = 7
+        numprocs = 6
+        ek.train_kmer_model(bedpath, vcfpath, fastapath, ksize, nprocs=numprocs, strand_col=5, bed_names_col=3)
+    return
+
+
 if __name__ == "__main__":
     # register SIGINT handler
-    signal(SIGINT, sigint_handler)
+    # signal(SIGINT, sigint_handler)
     start = time.time()
 
     # keywords for script functionality
     FUNCTION_MAP = {
         'query': test_check_bed_regions_for_expected_mutations,
-        'train': test_train_kmer_model,
+        'train': test_ktrain,
         'binchrom': test_chrom_bin_mutability,
     }
 
@@ -142,13 +161,13 @@ if __name__ == "__main__":
                         help='Number of processes to use (default=1)')
     parser.add_argument('--invert', action='store_true',
                         help='If flag is present, will invert regions given in bed file.')
-    parser.add_argument('--strand', '-S', action='store', dest='strand_col',
-                        help='Enter (zero-based) integer value of column in bed file with strand information')
-    parser.add_argument('--bed_names', action='store', dest='bed_name_col',
+    parser.add_argument('--strand', '-S', nargs='?', const=5, type=int, dest='strand_col',
+                        help='Enter (zero-based) integer value of column in bed file with strand information if it\'s not 5')
+    parser.add_argument('--bed_names', nargs='?', const=3, type=int, dest='bed_name_col',
                         help='Enter (zero-based) integer value of column in bed file with region/gene name information')
     parser.add_argument('--singletons', action='store_true', dest='check_singletons')
     parser.add_argument('--AF', action='store_true', dest='check_AF')
-
+    # add_argument('-t', '--test', nargs='?', const=5, type=int)
     args = parser.parse_args()
 
     if args.loctest:

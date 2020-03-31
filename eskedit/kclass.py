@@ -1,6 +1,9 @@
 from collections import defaultdict, Counter
-import array
+import pandas as pd
 from eskedit.constants import get_grch38_chroms
+import numpy as np
+import os
+import datetime
 
 
 class Variant:
@@ -161,6 +164,9 @@ class GRegion:
         return str(self.chrom) + '\t' + str(self.start) + '\t' + str(self.stop) + '\t' + str(self.name) + '\t' + str(
             self.strand)
 
+    def name_header(self):
+        return "chrom\tstart\tstop\tname\tstrand"
+
     # def __init__(self, chrom, start, stop):
     #     # self.region = [chrom, start, stop]
     #     self.chrom = chrom
@@ -299,14 +305,16 @@ class KmerWindow:
         self.gnomad_chroms = gnomad_samples * 2
         self.test_chroms = test_samples * 2
         self.kmer_size = kmer_size
-        from eskedit import get_counts_dict
-        self.counts_dict = get_counts_dict(kmer_size, alt_path=counts_path)
+        from eskedit import get_counts_from_file
+        if counts_path is not None:
+            self.counts_dict = get_counts_from_file(counts_path)
+        else:
+            self.counts_dict = None
 
     def calculate_expected(self, seq, raw_data=False):
         kmer_count = 0
         freq_sum = 0.0
         seq = seq.upper()
-        # num_nucs = len(seq.replace('N', ''))
         for start in range(len(seq) - self.kmer_size + 1):
             next_k = seq[start:start + self.kmer_size]
             if 'N' not in next_k:
@@ -321,6 +329,43 @@ class KmerWindow:
             return freq_sum / self.gnomad_chroms * self.test_chroms  # / len(seq)
 
 
+class QueryWindow:
+    def __init__(self, kmer_size, singleton_path=None, af_path=None, an_path=None, ac_path=None, gnomad_samples=71702,
+                 test_samples=71702):
+        self.cdata = defaultdict(dict)
+        self.kmer_size = kmer_size
+        self.gnomad_chroms = gnomad_samples * 2
+        self.test_chroms = test_samples * 2
+        from eskedit import get_counts_from_file, get_counts_dict
+        for name, ct in {'singleton': singleton_path, 'AF': af_path, 'AN': an_path, 'AC': ac_path}.items():
+            if ct is not None:
+                self.cdata[name] = get_counts_from_file(ct)
+            else:
+                self.cdata[name] = get_counts_dict(kmer_size, name)
+
+    def calculate_expected(self, seq):
+        kmer_count = 0
+        seq = seq.upper()
+        keys = []
+        for k, v in self.cdata.items():
+            if v is not None:
+                keys.append(k)
+        vals = np.zeros(len(keys))
+        for start in range(len(seq) - self.kmer_size + 1):
+            next_kmer = seq[start:start + self.kmer_size]
+            if 'N' not in next_kmer:
+                kmer_count += 1
+                for i, k in enumerate(keys):
+                    try:
+                        vals[i] += self.cdata[k][next_kmer]
+                    except KeyError:
+                        continue
+        # if raw_data:
+        #     return freq_sum, kmer_count, len(seq)  # num_nucs
+        else:
+            return dict(zip(keys, (vals / self.gnomad_chroms * self.test_chroms)))
+
+
 class DataContainer:
     def __init__(self):
         self.ref_count = Counter()
@@ -330,7 +375,7 @@ class DataContainer:
         self.get2 = False
         self.transitions2 = None
 
-    def add_count(self, region_ref_counts):
+    def add_kmer_counts(self, region_ref_counts):
         for k, v in region_ref_counts.items():
             self.ref_count[k] += v
 
@@ -352,3 +397,40 @@ class DataContainer:
             return self.ref_count, self.transitions, self.transitions2
         else:
             return self.ref_count, self.transitions
+
+
+class ModelContainer:
+    def __init__(self):
+        # self.transitions = defaultdict(lambda: array.array('L', [0, 0, 0, 0]))
+        self.data = {'kmer_counts': Counter(),
+                     'singleton': defaultdict(Counter),
+                     'AC': defaultdict(Counter),
+                     'AN': defaultdict(Counter),
+                     'AF': defaultdict(Counter)}
+        self.idx_nuc = list('ACGT')
+
+    def add_kmer_counts(self, region_ref_counts):
+        for k, v in region_ref_counts.items():
+            self.data['kmer_counts'][k] += v
+
+    def add_transition(self, trans, idx):
+        for k, v in trans.items():
+            for ialt, count in enumerate(v):
+                self.data[idx][k][self.idx_nuc[ialt]] += count
+
+    def writetofile(self, dirname='Model_{}'.format(datetime.datetime.now().strftime('%Y-%m-%d_%H-%M'))):
+        names = {'kmer_counts': 'reference_kmer_counts.csv',
+                 'singleton': 'singleton_transitions.csv',
+                 'AC': 'AC_transitions.csv',
+                 'AN': 'AN_transitions.csv',
+                 'AF': 'AF_transitions.csv'}
+        # https://stackoverflow.com/questions/14115254/creating-a-folder-with-timestamp/14115286
+        mydir = os.path.join(os.getcwd(), dirname)
+        os.makedirs(mydir)
+        for k, v in self.data.items():
+            pd.DataFrame.from_dict(v, orient='index').to_csv(os.path.join(mydir, names[k]))
+        print('Files written to %s' % mydir)
+        return
+
+    def get(self):
+        return self.data
