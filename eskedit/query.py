@@ -45,7 +45,7 @@ def count_regional_alleles(vcf_region):
     return AF, AC, AN, singletons, count
 
 
-def query_bed_region(region, vcf_path, fasta, kmer_size, singleton_path, af_path, an_path, ac_path):
+def query_bed_region(region, vcf_path, fasta, kmer_size, singleton_path, af_path, an_path, ac_path, model_dir):
     """
     @param ac_path:
     @param an_path:
@@ -61,7 +61,7 @@ def query_bed_region(region, vcf_path, fasta, kmer_size, singleton_path, af_path
     start = time.time()
     vcf = VCF(vcf_path)
     fasta = Fasta(fasta)
-    window = QueryWindow(kmer_size, singleton_path=singleton_path, af_path=af_path, an_path=an_path, ac_path=ac_path)
+    window = QueryWindow(kmer_size, singleton_path=singleton_path, af_path=af_path, an_path=an_path, ac_path=ac_path, model_dir=model_dir)
     # The first kmer actually begins centered around first nucleotide in sequence so
     # start position is shifted upstream by half the kmer length
     # end position is shifted downstream by the same
@@ -111,7 +111,7 @@ def query_bed_region(region, vcf_path, fasta, kmer_size, singleton_path, af_path
 
 
 def kquery(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, singleton_path=None, af_path=None,
-           an_path=None, ac_path=None, outfile=None,
+           an_path=None, ac_path=None, model_dir=None, outfile=None,
            strand_col=None, bed_names_col=None):
     field1 = 'NumSNVs'
     field2 = 'Singletons'
@@ -170,7 +170,7 @@ def kquery(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, singleton_path=N
     print(
         '{: <8} {: <12} {: <12} {: <20} {: <8} {: <10} {: <12} {: <10} {: <10} {: <24} {: <22} {: <20} {: <20} {: <20}'.format(
             *name_header, field1, field2, field3, field4, field5, field6, field7, field8, field9), flush=True)
-    arguments = [(region, vcf_path, fasta_path, kmer_size, singleton_path, af_path, an_path, ac_path) for region in
+    arguments = [(region, vcf_path, fasta_path, kmer_size, singleton_path, af_path, an_path, ac_path, model_dir) for region in
                  regions]
     pool = mp.Pool(nprocs)
     results = pool.starmap_async(query_bed_region, arguments)

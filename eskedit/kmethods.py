@@ -1,3 +1,5 @@
+import math
+import os
 import random
 import multiprocessing as mp
 import sys
@@ -14,6 +16,7 @@ from eskedit.constants import get_autosome_names_grch38
 from eskedit.kclass import Kmer, KmerWindow, GRegion
 from eskedit.ksplit import split_seq
 import itertools
+import matplotlib.pyplot as plt
 
 
 def ran_seq(seq_len):
@@ -534,6 +537,130 @@ def generate_frequency_table(reference_counts, transition_counts, filepath=False
     if save_file is not None:
         freq_table.to_csv(save_file)
     return freq_table
+
+
+def get_model_paths(modeldir):
+    data = {'singleton': None, 'AF': None, 'AN': None, 'AC': None, 'reference': None}
+    for file in os.listdir(modeldir):
+        for k in data.keys():
+            if k in file.split('_'):
+                data[k] = (os.path.join(modeldir, file))
+    return data
+
+
+def _buildtable(path, counts):
+    ts = pd.read_csv(path, index_col=0).sort_index()
+    return pd.DataFrame(ts.mean(axis=1) / counts['0'])
+
+
+def build_tables(modeldir):
+    data = get_model_paths(modeldir)
+    tables = {key: None for key in data.keys()}
+    tables['reference'] = pd.read_csv(data['reference'], index_col=0).sort_index()
+    kmersize = int(math.log(len(tables['reference'].index), 4))
+    dirname = 'TABLES_{}'.format(datetime.datetime.now().strftime('%Y-%m-%d_%H-%M'))
+    dirname = os.path.join(modeldir, dirname)
+    os.makedirs(dirname)
+    for k, path in data.items():
+        if tables[k] is None:
+            df = _buildtable(path, tables['reference'])
+            df.to_csv(os.path.join(dirname, '{}mer_{}_table.csv'.format(kmersize, k)))
+            tables[k] = df
+    return tables
+
+
+def build_7mer_flanks(df, ref=None, alt=None, rcomp=False):
+    rvcomp = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
+    nucs = list('ACGT')
+    mindex = list(it.product(nucs, nucs, nucs))
+    dindex = pd.MultiIndex.from_tuples(mindex)
+    flanks = pd.DataFrame(index=dindex, columns=dindex)
+    flanks = flanks.fillna(0)
+    ct = []
+    condition = [ref is None, alt is None]
+    for i, r in df.iterrows():
+        if ref is None:
+            ref = i[3]
+        if alt is None:
+            alt = 0
+        if i[3] == ref:
+            ct.append((i, r[alt]))
+        if rcomp:
+            if i[3] == rvcomp[ref]:
+                ct.append((i, r[rvcomp[alt]]))
+    ct = np.array(ct)
+    ctdf = pd.DataFrame.from_records(ct)
+    ctdf.columns = ['Kmer', 'Count']
+    ctdf.Count = ctdf.Count.astype('float64')
+    for i, val in zip(list(ctdf.Kmer), list(ctdf.Count)):
+        idx = tuple(list(i[:3]))
+        col = tuple(list(i[4:]))
+        flanks.loc[idx, col] = val
+    return flanks.astype('float64')
+
+
+def plot_7mer_heatmap(flanks):
+    fontsize = 30
+    spacing = fontsize + 5
+    nucs = list('ACGT')
+
+    plt.rcParams['figure.figsize'] = [30, 30]
+    plt.rcParams.update({'figure.autolayout': True})
+    plt.rcParams['xtick.labelsize'] = fontsize
+    plt.rcParams['ytick.labelsize'] = fontsize
+
+    level1 = [i for i in range(0, flanks.shape[0], flanks.shape[0] // 4)]
+    midpt = (level1[1] - level1[0]) / 2
+    level1 = [i + midpt for i in level1]
+    l1_lab = nucs
+
+    level2 = [i for i in range(0, flanks.shape[0], flanks.shape[0] // 16)]
+    midpt = (level2[1] - level2[0]) / 2
+    level2 = [i + midpt for i in level2]
+    l2_lab = nucs * 4
+
+    level3 = [i for i in range(0, flanks.shape[0], flanks.shape[0] // 64)]
+    midpt = (level3[1] - level3[0]) / 2
+    level3 = [i + midpt for i in level3]
+    l3_lab = nucs * 16
+
+    ax1 = plt.subplot(111)
+    ax1.matshow(flanks.T)
+    ax1.xaxis.set_ticks_position('bottom')  # set the position of the second x-axis to bottom
+    ax1.xaxis.set_label_position('bottom')  # set the position of the second x-axis to bottom
+    ax1.yaxis.set_ticks_position('left')
+    ax1.yaxis.set_label_position('left')
+    ax1.set_xticks(level3)
+    ax1.set_xticklabels(l3_lab)
+    ax1.set_yticks(level3)
+    ax1.set_yticklabels(l3_lab)
+
+    ax2 = ax1.twinx()  # .twinx()
+    ax2.xaxis.set_ticks_position('bottom')  # set the position of the second x-axis to bottom
+    ax2.xaxis.set_label_position('bottom')  # set the position of the second x-axis to bottom
+    ax2.spines['bottom'].set_position(('outward', spacing))
+    ax2.set_xticks(level2)
+    ax2.set_xticklabels(l2_lab)
+    ax2.set_xlim(ax1.get_xlim())
+    ax2.set_yticks(level2)
+    ax2.set_yticklabels(l2_lab)
+    ax2.spines['left'].set_position(('outward', spacing))
+    ax2.yaxis.set_ticks_position('left')
+    ax2.yaxis.set_label_position('left')
+    ax2.set_ylim(ax1.get_ylim())
+
+    ax3 = ax2.twinx()  # .twinx()
+    ax3.xaxis.set_ticks_position('bottom')  # set the position of the second x-axis to bottom
+    ax3.xaxis.set_label_position('bottom')  # set the position of the second x-axis to bottom
+    ax3.spines['bottom'].set_position(('outward', spacing * 2))
+    ax3.yaxis.set_ticks_position('left')
+    ax3.yaxis.set_label_position('left')
+    ax3.spines['left'].set_position(('outward', spacing * 2))
+    ax3.set_xticks(level1)
+    ax3.set_xticklabels(l1_lab)
+    ax3.set_yticks(level1)
+    ax3.set_yticklabels(l1_lab)
+    ax3.set_ylim(ax1.get_ylim())
 
 
 if __name__ == "__main__":

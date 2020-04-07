@@ -330,18 +330,30 @@ class KmerWindow:
 
 
 class QueryWindow:
-    def __init__(self, kmer_size, singleton_path=None, af_path=None, an_path=None, ac_path=None, gnomad_samples=71702,
+    def __init__(self, kmer_size, model_dir=None, singleton_path=None, af_path=None, an_path=None, ac_path=None,
+                 gnomad_samples=71702,
                  test_samples=71702):
         self.cdata = defaultdict(dict)
         self.kmer_size = kmer_size
         self.gnomad_chroms = gnomad_samples * 2
         self.test_chroms = test_samples * 2
         from eskedit import get_counts_from_file, get_counts_dict
-        for name, ct in {'singleton': singleton_path, 'AF': af_path, 'AN': an_path, 'AC': ac_path}.items():
-            if ct is not None:
-                self.cdata[name] = get_counts_from_file(ct)
-            else:
-                self.cdata[name] = get_counts_dict(kmer_size, name)
+        if model_dir is None:
+            for name, ct in {'singleton': singleton_path, 'AF': af_path, 'AN': an_path, 'AC': ac_path}.items():
+                if ct is not None:
+                    self.cdata[name] = get_counts_from_file(ct)
+                else:
+                    self.cdata[name] = get_counts_dict(kmer_size, name)
+        else:
+            def get_cdata_fromdir(dirpath):
+                data = {'singleton': None, 'AF': None, 'AN': None, 'AC': None}
+                for file in os.listdir(model_dir):
+                    for k in data.keys():
+                        if k in file.split('_'):
+                            data[k] = get_counts_from_file(os.path.join(dirpath, file))
+                return data
+
+            self.cdata = get_cdata_fromdir(model_dir)
 
     def calculate_expected(self, seq):
         kmer_count = 0

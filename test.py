@@ -39,9 +39,8 @@ def test_train_kmer_model(arguments, test=None):
         vcfpath = '/Users/simonelongo/too_big_for_icloud/gnomAD_v3/gnomad.genomes.r3.0.sites.vcf.bgz'
         fastapath = '/Users/simonelongo/too_big_for_icloud/ref_genome/hg38/hg38.fa'
         numprocs = 8
-        result = ek.train_kmer_model(bedpath, vcfpath, fastapath, kmer_size, nprocs=numprocs, clean_bed=True,
-                                     invert_selection=False, strand_col=None,
-                                     bed_names_col=None, singletons=False, nonsingletons=True)
+        result = ek.train_kmer_model(bedpath, vcfpath, fastapath, kmer_size, nprocs=numprocs, strand_col=None,
+                                     bed_names_col=None)
         for k, v in result.items():
             outfile1 = 'TEST_regional_' + str(k) + '_' + str(kmer_size) + 'mer_count.csv'
             outfile2 = 'TEST_regional_transitions_' + str(k) + '_' + str(kmer_size) + 'mer.csv'
@@ -57,7 +56,7 @@ def test_train_kmer_model(arguments, test=None):
 def test_check_bed_regions_for_expected_mutations(arguments, test=None):
     if test is None:
         ek.kquery(arguments.bed_path, arguments.vcf_path, arguments.fasta_path, arguments.kmer_size,
-                  nprocs=arguments.nprocs,
+                  nprocs=arguments.nprocs, model_dir=arguments.model_dir,
                   strand_col=arguments.strand_col, bed_names_col=arguments.bed_name_col)
     else:
         kmer_size = 7
@@ -169,8 +168,10 @@ if __name__ == "__main__":
                         help='Enter (zero-based) integer value of column in bed file with strand information if it\'s not 5')
     parser.add_argument('-L', '--bed_names', nargs='?', const=3, type=int, dest='bed_name_col',
                         help='Enter (zero-based) integer value of column in bed file with region/gene name information')
-    parser.add_argument('--singletons', action='store_true', dest='check_singletons')
-    parser.add_argument('--AF', action='store_true', dest='check_AF')
+    parser.add_argument('-D', '--model_dir', action='store', dest='model_dir',
+                        help='Path to directory containing models to use for querying')
+    # parser.add_argument('--singletons', action='store_true', dest='check_singletons')
+    # parser.add_argument('--AF', action='store_true', dest='check_AF')
     # add_argument('-t', '--test', nargs='?', const=5, type=int)
     args = parser.parse_args()
 
