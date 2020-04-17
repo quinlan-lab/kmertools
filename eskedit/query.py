@@ -162,7 +162,7 @@ def kquery(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, singleton_path=N
         name_header = 'Region\t \t \t \t '.split('\t')
 
     with open(outfile, 'w') as output:
-        output.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (
+        output.write('#%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (
             "".join(name_header), field1, field2, field3, field4, field5, field6, field7, field8))
 
     # print('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (
@@ -176,7 +176,7 @@ def kquery(bed_path, vcf_path, fasta_path, kmer_size, nprocs=4, singleton_path=N
     results = pool.starmap_async(query_bed_region, arguments)
     pool.close()
     pool.join()
-    with open(outfile, 'w') as output:
+    with open(outfile, 'a') as output:
         for result in results.get():
             output.write(result)
     return
