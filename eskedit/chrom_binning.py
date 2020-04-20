@@ -8,6 +8,7 @@ import multiprocessing as mp
 from eskedit import GRegion, Variant
 import time
 import pandas as pd
+from scipy.stats import multinomial
 
 
 def bin_chrom_vcf(chrom, chrom_len, nbins):
@@ -23,6 +24,13 @@ def bin_chrom_vcf(chrom, chrom_len, nbins):
         else:
             regions.append(GRegion(chrom, start, chrom_len))
     return regions
+
+
+def row_multinomial(row):
+    ns = [r for r in row[:4] if r > 0]
+    ns.append(row['counts'] - sum(ns))
+    alphas = [ n / row['counts'] for n in ns]
+    return multinomial.pmf(ns, n=row['counts'], p=alphas)
 
 
 def process_chrom_bin(region, kmer_size, vcf_path, fasta_path, AF=False):
@@ -62,17 +70,18 @@ def process_chrom_bin(region, kmer_size, vcf_path, fasta_path, AF=False):
     if len(transitions.keys()) > 0 and len(region_ref_counts.keys()) > 0:
         bin_trans = pd.DataFrame.from_dict(transitions, orient='index')
         bin_trans.sort_index(inplace=True)
-        bin_trans['tot'] = bin_trans.sum(axis=1)
+        # bin_trans['tot'] = bin_trans.sum(axis=1)
         bin_kcounts = pd.DataFrame.from_dict(region_ref_counts, orient='index')
         bin_kcounts.sort_index(inplace=True)
-        bin_kcounts.columns = ['counts']
-        kmer_freq = pd.concat([bin_trans.loc[:, 'tot'], bin_kcounts], join='outer', axis=1, sort=True)
-        kmer_freq.fillna(0, inplace=True)
-        kmer_freq['freq'] = kmer_freq.tot / kmer_freq.counts
-        kmer_freq.loc['GC_content', 'freq'] = gc_content
-        kmer_freq.loc['N_count', 'freq'] = n_count
+        bin_trans['counts'] = bin_kcounts[0]
+        bin_trans['freq'] = bin_trans.apply(row_multinomial)
+        # kmer_freq = pd.concat([bin_trans.loc[:, 'tot'], bin_kcounts], join='outer', axis=1, sort=True)
+        # kmer_freq.fillna(0, inplace=True)
+        # kmer_freq['freq'] = kmer_freq.tot / kmer_freq.counts
+        bin_trans.loc['GC_content', 'freq'] = gc_content
+        bin_trans.loc['N_count', 'freq'] = n_count
         print('Finished region %s in %s' % (str(region), str(time.time() - start)), flush=True)
-        return region, kmer_freq['freq'].to_dict()
+        return region, bin_trans['freq'].to_dict()
     else:
         print('Finished region %s in %s' % (str(region), str(time.time() - start)), flush=True)
         return region, None
