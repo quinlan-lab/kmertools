@@ -171,7 +171,7 @@ if __name__ == "__main__":
     parser.add_argument('-D', '--model_dir', action='store', dest='model_dir',
                         help='Path to directory containing models to use for querying')
     # parser.add_argument('--singletons', action='store_true', dest='check_singletons')
-    # parser.add_argument('--AF', action='store_true', dest='check_AF')
+    parser.add_argument('--AF', action='store_true', dest='check_AF')
     # add_argument('-t', '--test', nargs='?', const=5, type=int)
     args = parser.parse_args()
 
