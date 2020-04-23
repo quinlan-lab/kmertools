@@ -1,4 +1,5 @@
 import array
+import datetime
 import time
 from collections import defaultdict
 import multiprocessing as mp
@@ -100,6 +101,8 @@ def train_kmer_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=1,
     """
     start_time = time.time()
 
+    dirname = "{}_{}".format('.'.join(bed_path.split('.')[:-1]), datetime.datetime.now().strftime('%Y-%m-%d_%H-%M'))
+
     try:
         nprocs = int(nprocs)
         if strand_col is not None:
@@ -116,7 +119,7 @@ def train_kmer_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=1,
 
     def sigint_handler(signal_received, frame):
         model = dc.get()
-        model.writetofile()
+        model.writetofile(dirname=dirname)
         pool.terminate()
         pool.join()
         exit(0)
@@ -134,7 +137,7 @@ def train_kmer_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=1,
 
     print("Done in {}".format(time.time() - start_time))
 
-    dc.get().writetofile()
+    dc.get().writetofile(dirname=dirname)
 
     return  # master_ref_counts, transitions_list
 

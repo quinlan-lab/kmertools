@@ -438,7 +438,16 @@ class ModelContainer:
                  'AF': 'AF_transitions.csv'}
         # https://stackoverflow.com/questions/14115254/creating-a-folder-with-timestamp/14115286
         mydir = os.path.join(os.getcwd(), dirname)
-        os.makedirs(mydir)
+        tempdir = mydir
+        count = 1
+        while True:
+            try:
+                os.makedirs(mydir)
+                break
+            except FileExistsError:
+                mydir = tempdir + '_' + str(count)
+                count += 1
+                continue
         for k, v in self.data.items():
             pd.DataFrame.from_dict(v, orient='index').to_csv(os.path.join(mydir, names[k]))
         print('Files written to %s' % mydir)
