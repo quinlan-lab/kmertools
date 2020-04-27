@@ -1,5 +1,6 @@
 import array
 import datetime
+import math
 import time
 from collections import defaultdict
 import multiprocessing as mp
@@ -9,6 +10,7 @@ from cyvcf2 import VCF
 from pyfaidx import FetchError, Fasta
 from eskedit import get_bed_regions, ModelContainer, is_dash, Variant, complete_sequence, is_quality_snv, kmer_search
 from signal import signal, SIGINT
+from scipy.stats import multinomial
 
 
 # def sigint_handler(signal_received, frame):
@@ -140,6 +142,24 @@ def train_kmer_model(bed_path, vcf_path, fasta_path, kmer_size, nprocs=1,
     dc.get().writetofile(dirname=dirname)
 
     return  # master_ref_counts, transitions_list
+
+
+def rowmnd(row):
+    ns = [r for r in row.iloc[:4] if r > 0]
+    ns.append(row.iloc[4] - sum(ns))
+    alphas = [n / row.iloc[4] for n in ns]
+    return multinomial.pmf(ns, n=row.iloc[4], p=alphas)
+
+
+def generate_multinomial_probabilities(transitions_path, counts_path, ksize=None):
+    ts = pd.read_csv(transitions_path, index_col=0).sort_index()
+    cts = pd.read_csv(counts_path, index_col=0).sort_index()
+    cts.columns = ['counts']
+    ts = ts.merge(cts, left_on=None, right_on=None, left_index=True, right_index=True)
+    if ksize is None:
+        ksize = int(math.log(len(cts), 4))
+    ts['probability'] = ts.apply(rowmnd, axis=1)
+    return ts[['probability']]
 
 
 if __name__ == "__main__":
