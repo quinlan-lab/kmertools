@@ -66,13 +66,14 @@ def test_check_bed_regions_for_expected_mutations(arguments, test=None):
         bedpath = '/Users/simonelongo/Documents/QuinlanLabFiles/kmertools/QUERY_TEST_100lines.bed'
         vcfpath = '/Users/simonelongo/too_big_for_icloud/gnomAD_v3/gnomad.genomes.r3.0.sites.vcf.bgz'
         fastapath = '/Users/simonelongo/too_big_for_icloud/ref_genome/hg38/hg38.fa'
+        modelpath='/Users/simonelongo/Documents/QuinlanLabFiles/kmertools/Model_2020-03-31_16-43/TABLES_2020-04-27_08-38'
         numprocs = 6
         countspath = None
         strand = 5
         bednames = 3
         # kquery(bedpath, vcfpath, fastapath, 7, nprocs=12, strand_col=5, bed_names_col=3,
         #        outfile='QUERY_TEST_RUN1.dat')
-        ek.kquery(bedpath, vcfpath, fastapath, kmer_size, numprocs, strand_col=strand, bed_names_col=bednames)
+        ek.kquery(bedpath, vcfpath, fastapath, kmer_size, numprocs, strand_col=strand, bed_names_col=bednames, model_dir=modelpath)
 
     return
 
